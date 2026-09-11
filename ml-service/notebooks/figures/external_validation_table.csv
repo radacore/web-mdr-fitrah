@@ -1,0 +1,5 @@
+metric,internal_test,external_test
+Accuracy,86.67,84.44
+Precision,83.33,56.25
+Recall,62.5,100.0
+F1 score,71.43,72.0

@@ -1,0 +1,49 @@
+.~lock.Data Uji ML (1).xlsx#
+.~lock.Data Uji ML.xlsx#
+Data Uji ML (1).xlsx
+Data Uji ML.xlsx
+data_uji_ml.csv
+index.html
+disertasi_meiyanti-pengembangan-pembelajaran-mesin-untuk-prediksi-keberhasilan-pengobatan-tuberkulosis-pada-populasi-usia-produktif-di-indonesia.pdf
+Proposal Disertasi .pdf
+Untitled0.ipynb
+*.ipynb_checkpoints
+.ipynb_checkpoints/
+*_checkpoint.ipynb
+* checkpoint*.ipynb
+"* copy.ipynb"
+logs/
+__pycache__/
+**/__pycache__/
+*.pyc
+.DS_Store
+**/.DS_Store
+.sisyphus/
+.playwright-mcp/
+.env
+*.env
+.env.backup
+*.log
+flask.log
+# build dirs (safety net, nested gitignore sudah cover sebagian)
+node_modules/
+vendor/
+venv/
+.pytest_cache/
+# data sensitif / file skripsi - jangan push ke repo public
+Kab_Gowa_*
+*data uji ml gowa*
+*Data Uji ML*
+data_uji_ml.csv
+ml-service/data/*backup*.csv
+ml-service/models.bak/
+*.sql
+laravel_mdr.sql
+*.docx
+~$*
+*.dmg
+Wallspace.dmg
+Proposal*
+disertasi_*
+# file office lock
+.~lock.*#
