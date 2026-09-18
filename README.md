@@ -1,153 +1,205 @@
-# 🏥 MDR-TB Prediction System
+# Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB
 
-Sistem cerdas berbasis Machine Learning untuk memprediksi keberhasilan pengobatan pasien *Multi-Drug Resistant Tuberculosis* (MDR-TB). Proyek ini menggabungkan ekosistem **Laravel 12** yang modern dengan **Machine Learning Service** berbasis Python untuk memberikan prediksi medis yang akurat dan berbasis data.
+Implementasi sistem klasifikasi keberhasilan pengobatan pasien *Multidrug-Resistant Tuberculosis* (MDR-TB) menggunakan teknik **SMOTE** untuk penanganan ketidakseimbangan kelas dan algoritma **Random Forest** sebagai model klasifikasi.
 
----
+Data penelitian berasal dari rekam medis pasien MDR-TB RSUD Labuang Baji, berjumlah 175 data dengan 17 variabel prediktor.
 
-## 🏗️ Arsitektur Proyek
+## Arsitektur
 
-Proyek ini terbagi menjadi dua sub-sistem utama yang saling berkomunikasi melalui REST API:
+Sistem terdiri atas dua bagian yang berkomunikasi melalui REST API:
 
-1.  **[`mdr-tb-prediction/`](./mdr-tb-prediction)**:
-    - **Peran**: Web Application & User Interface.
-    - **Tech Stack**: Laravel 12, React (Inertia.js), Tailwind CSS, Shadcn UI.
-    - **Fitur**: Dashboard, CRUD Data Training, Riwayat Prediksi, Autentikasi.
+| Direktori | Peran | Teknologi |
+| :-- | :-- | :-- |
+| `mdr-tb-prediction/` | Aplikasi web dan antarmuka pengguna | Laravel 12, Inertia.js, React, TypeScript, Tailwind CSS |
+| `ml-service/` | Layanan pemrosesan data dan klasifikasi | Flask, scikit-learn, imbalanced-learn, pandas |
 
-2.  **[`ml-service/`](./ml-service)**:
-    - **Peran**: Machine Learning Engine.
-    - **Tech Stack**: Flask, Scikit-learn, Pandas, Joblib.
-    - **Fitur**: Preprocessing data medis, Training Model, Prediksi Real-time.
+## Aktor Sistem
 
----
+| Aktor | Kewenangan |
+| :-- | :-- |
+| Admin | Mengelola akun pengguna dan data rekam medis, melakukan pembersihan data, melatih ulang model, serta menjalankan skenario pengujian |
+| Tenaga medis | Menginput data pasien, memperoleh hasil klasifikasi, melihat riwayat klasifikasinya sendiri, dan melihat hasil evaluasi model |
 
-## 🚀 Panduan Instalasi & Setup (Lengkap)
+Sistem tidak menyediakan akses publik maupun pendaftaran mandiri. Seluruh akun dibuat oleh admin karena data yang diproses merupakan data rekam medis yang dilindungi Undang-Undang Nomor 27 Tahun 2022.
 
-Lakukan langkah-langkah berikut secara berurutan:
+## Variabel Penelitian
 
-### 1. Prasyarat Sistem
-- **PHP**: ^8.2 (dengan extension `bcmath`, `ctype`, `fileinfo`, `json`, `mbstring`, `openssl`, `pdo`, `tokenizer`, `xml`)
-- **Node.js**: ^18.x atau versi terbaru
-- **Python**: ^3.13 (disarankan menggunakan `venv`)
-- **Database**: MySQL 8.0+ atau MariaDB
-- **Web Server**: Apache / Nginx (opsional untuk lokal)
+**Variabel numerik (4):** `Ket.Usia` (usia dalam tahun), `BB` (berat badan), `TB` (tinggi badan), `IMT` (indeks massa tubuh).
 
-### 2. Konfigurasi Web Application (Laravel)
+**Variabel kategorikal (13):** `Usia` (kategori usia), `Jenis Kelamin`, `Status Bekerja`, `Status Gizi`, `Status Merokok`, `Pemeriksaan Kontak`, `Riwayat_DM`, `Riwayat_HIV`, `Komorbiditas`, `Kepatuhan Minum Obat`, `Efek Samping Obat`, `Riwayat Pengobatan Sebelumnya`, `Panduan Pengobatan`.
+
+**Variabel target:** `Keberhasilan Pengobatan` dengan nilai `Berhasil` (kode 0) dan `Tidak Berhasil` (kode 1).
+
+Dua variabel di antaranya bersifat **turunan** dan dihitung sistem, bukan diisi operator:
+
+| Variabel turunan | Dihitung dari | Aturan |
+| :-- | :-- | :-- |
+| Indeks massa tubuh (`IMT`) | Berat dan tinggi badan | BB / (TB dalam meter)² |
+| Kategori usia (`Usia`) | Usia dalam tahun | Kurang dari 45 tahun tergolong usia produktif, selebihnya usia lanjut |
+
+Perhitungan otomatis ini menjaga kedua variabel selalu selaras dengan data pasien, sehingga tidak dapat terjadi pencatatan yang bertentangan seperti pasien berusia 48 tahun yang tercatat sebagai usia produktif.
+
+Kelas `Tidak Berhasil` merupakan kelas minoritas sekaligus kelas positif pada perhitungan metrik, sehingga *recall* menjadi metrik utama: kesalahan yang paling dihindari adalah pasien berisiko gagal yang tidak terdeteksi (*false negative*).
+
+## Alur Pemodelan
+
+1. **Pembersihan data** — penghapusan data duplikat dan data dengan nilai kosong.
+2. **Rekayasa fitur** — perhitungan IMT dan penentuan kategori usia.
+3. **Label encoding** — konversi variabel kategorikal menjadi numerik dengan pemetaan tetap.
+4. **Pembagian data** — 80% data latih dan 20% data uji secara *stratified*.
+5. **Normalisasi** — `StandardScaler` diterapkan sebelum SMOTE agar perhitungan jarak antartetangga pada SMOTE tidak didominasi variabel berskala besar seperti tinggi badan.
+6. **Penerapan SMOTE** — hanya pada data latih, agar data uji tetap merepresentasikan distribusi asli.
+7. **Hyperparameter tuning** — pencarian *grid* pada `n_estimators`, `max_depth`, `min_samples_split`, dan `random_state`.
+8. **Evaluasi** — *confusion matrix*, *accuracy*, *precision*, *recall*, *F1-score*, dan *feature importance*.
+
+Tahap 5 sampai 7 dirangkai dalam satu `imblearn.pipeline.Pipeline` dengan urutan `scaler → smote → classifier`. Perangkaian ini diperlukan agar normalisasi dan SMOTE hanya dipelajari dari data latih pada setiap lipatan *cross validation*, sehingga metrik yang dilaporkan tidak terpengaruh kebocoran data (*data leakage*).
+
+## Prasyarat
+
+- PHP 8.2 atau lebih baru beserta Composer
+- Node.js 18 atau lebih baru beserta npm
+- Python 3.10 atau lebih baru
+- MySQL 8.0 atau MariaDB
+
+## Instalasi
+
+### 1. Aplikasi web
+
 ```bash
 cd mdr-tb-prediction
-
-# Instalasi Dependensi
 composer install
 npm install
-
-# Environment && Key
 cp .env.example .env
 php artisan key:generate
 ```
 
-**Konfigurasi Database `.env`:**
-Buat database kosong di MySQL bernama `mdr_prediction`, lalu masukkan kredensialnya:
+Buat basis data kosong bernama `laravel_mdr`, lalu sesuaikan berkas `.env`:
+
 ```env
+APP_NAME="Klasifikasi MDR-TB"
+APP_LOCALE=id
+
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=mdr_prediction
+DB_DATABASE=laravel_mdr
 DB_USERNAME=root
-DB_PASSWORD=YOUR_PASSWORD
+DB_PASSWORD=
 
-# URL integrasi dengan ML Service
 ML_SERVICE_URL=http://localhost:5000
 ```
 
-**Migration & Initialization:**
-Aplikasi ini sudah menyertakan data riset awal (175 data pasien) yang akan langsung masuk ke database:
+Jalankan migrasi beserta data awal:
+
 ```bash
 php artisan migrate --seed
 ```
 
----
+Perintah ini memuat 175 data rekam medis dari `ml-service/data/data_uji_ml.csv` serta membuat dua akun:
 
-### 3. Konfigurasi Machine Learning Service (Python)
-Gunakan terminal baru untuk menjalankan Python service:
+| Peran | Email | Kata sandi |
+| :-- | :-- | :-- |
+| Admin | `admin@mdrtb.test` | `password` |
+| Tenaga medis | `tenagamedis@mdrtb.test` | `password` |
+
+### 2. Layanan klasifikasi
+
 ```bash
 cd ml-service
-
-# Membuat Virtual Environment (Rekomendasi)
 python3 -m venv venv
-
-# Aktivasi
-source venv/bin/activate  # Untuk Linux/macOS
-# venv\Scripts\activate   # Untuk Windows
-
-# Instalasi Library ML
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
----
+## Menjalankan Sistem
 
-## 🏃 Cara Menjalankan Aplikasi (Step-by-Step)
+Cara termudah, dari direktori utama:
 
-Untuk menjalankan seluruh sistem, pastikan Anda mengikuti urutan berikut di terminal terpisah:
-
-### Langkah 1: Jalankan Laravel Backend
-Buka terminal dan masuk ke folder Laravel:
 ```bash
-cd mdr-tb-prediction && php artisan serve
+./start-all.sh
 ```
-*Pastikan backend berjalan di http://localhost:8000. Laravel harus aktif lebih dulu karena Machine Learning Service memerlukan akses ke API Laravel saat startup.*
 
-### Langkah 2: Jalankan Frontend Watcher (Vite)
-Buka terminal baru dan jalankan compiler asset:
+Skrip tersebut menjalankan layanan klasifikasi (port 5000), aplikasi web (port 8000), dan server aset (port 5173) sekaligus. Tekan `Ctrl+C` untuk menghentikan semuanya.
+
+Untuk menjalankan secara manual, gunakan tiga terminal terpisah:
+
 ```bash
+# Terminal 1 — layanan klasifikasi
+cd ml-service && source venv/bin/activate && python app.py
+
+# Terminal 2 — aplikasi web
+cd mdr-tb-prediction && php artisan serve
+
+# Terminal 3 — server aset
 cd mdr-tb-prediction && npm run dev
 ```
-*Ini diperlukan agar tampilan UI (React & Tailwind) muncul dengan benar.*
 
-### Langkah 3: Jalankan Machine Learning Service (Flask)
-Buka terminal baru lagi dan jalankan Python service:
+Aplikasi dapat diakses pada `http://localhost:8000`.
+
+## Fitur Aplikasi
+
+| Menu | Keterangan | Akses |
+| :-- | :-- | :-- |
+| Dashboard | Ringkasan menu yang tersedia sesuai peran pengguna | Semua |
+| Klasifikasi | Formulir masukan 17 variabel, hasil klasifikasi, dan rekomendasi tindakan klinis | Semua |
+| Riwayat | Daftar hasil klasifikasi beserta detail masukan | Semua |
+| Evaluasi Model | *Confusion matrix*, metrik evaluasi, dan *feature importance* | Semua |
+| Pengujian SMOTE | Perbandingan performa model dengan dan tanpa SMOTE | Admin |
+| Skenario Pengujian | Variasi proporsi pembagian data dan jumlah pohon | Admin |
+| Data Rekam Medis | Pengelolaan dataset dan pelatihan ulang model | Admin |
+| Pembersihan Data | Ringkasan hasil pemeriksaan duplikat dan nilai kosong | Admin |
+| Manajemen Akun | Pengelolaan akun admin dan tenaga medis | Admin |
+
+### Rekomendasi Tindakan Klinis
+
+Halaman hasil klasifikasi tidak berhenti pada label `Berhasil` atau `Tidak Berhasil`. Sistem juga menampilkan rekomendasi tindakan penanganan agar intervensi medis dapat dilakukan lebih awal, sesuai peran sistem pendukung keputusan yang diuraikan pada Bab II.
+
+Rekomendasi disusun berbasis aturan (*rule based*) oleh `app/Services/RekomendasiKlinis.php` atas nilai variabel yang dimasukkan tenaga medis, bukan dihasilkan oleh model Random Forest. Model hanya menghasilkan label dan probabilitas, sedangkan penalaran tindakan mengikuti faktor risiko yang teramati pada dataset penelitian.
+
+Setiap aturan divalidasi terhadap 175 data rekam medis: sebuah faktor hanya dipertahankan bila kelompok pasien yang memenuhi kondisi memiliki tingkat kegagalan pengobatan lebih tinggi dibanding kelompok pembanding (baseline 30,9%). Prioritas ditentukan dari besarnya selisih:
+
+| Faktor risiko | Selisih tingkat kegagalan | Prioritas |
+| :-- | --: | :-- |
+| Tidak patuh minum obat | +85,0 poin | Tinggi |
+| Regimen jangka panjang | +69,2 poin | Tinggi |
+| Riwayat pengobatan ulang | +51,7 poin | Tinggi |
+| Masih merokok | +39,5 poin | Sedang |
+| Riwayat diabetes melitus | +26,0 poin | Sedang |
+| Komorbiditas lain | +25,6 poin | Sedang |
+| Usia lanjut | +16,0 poin | Sedang |
+| Riwayat HIV | +7,0 poin | Sedang |
+
+Aturan yang arah kegagalannya bertentangan dengan data tidak dimasukkan; sebagai contoh, "pemeriksaan kontak belum dilakukan" pada dataset ini justru berkorelasi dengan keberhasilan, sehingga tidak dijadikan penanda risiko.
+
+Sistem juga menyimpulkan tingkat risiko pasien:
+
+| Tingkat risiko | Kondisi |
+| :-- | :-- |
+| Tinggi | Model mengklasifikasikan pasien `Tidak Berhasil` |
+| Sedang | Pasien diklasifikasikan `Berhasil` namun memiliki faktor risiko berprioritas tinggi, atau tiga faktor risiko atau lebih |
+| Rendah | Pasien diklasifikasikan `Berhasil` dengan paling banyak dua faktor risiko berprioritas sedang |
+
+Pemisahan ini membuat pasien yang diklasifikasikan berhasil tetapi tidak patuh minum obat tidak lolos dari perhatian tenaga medis. Keputusan klinis akhir tetap berada pada tenaga medis.
+
+## Pengujian
+
 ```bash
-cd ml-service && source venv/bin/activate && python app.py
+cd mdr-tb-prediction
+php artisan test
 ```
-*Service akan berjalan di http://localhost:5000 dan akan mencoba mengambil data training dari Laravel API.*
 
----
+## Pemecahan Masalah
 
-**Akses Aplikasi**: Buka browser Anda di **`http://localhost:8000`**
+**Port 5000 sudah terpakai.** Hentikan proses lama:
 
----
+```bash
+lsof -ti:5000 | xargs kill -9
+```
 
-## 🧠 Detail Machine Learning & Data
+**Tampilan tidak muncul dengan benar.** Pastikan `npm run dev` berjalan, atau jalankan `npm run build` untuk mode produksi.
 
-### Algoritma yang Diimplementasikan:
-Sistem melatih 4 model secara bersamaan dan memilih yang terbaik berdasarkan skor F1:
-- **Logistic Regression**: Untuk baseline statistik.
-- **Decision Tree**: Visualisasi logika keputusan.
-- **K-Nearest Neighbor (KNN)**: Pengelompokan pasien berdasarkan kedekatan profil medis.
-- **Support Vector Machine (SVM)** (**BEST MODEL** - memberikan akurasi tertinggi pada dataset MDR-TB).
+**Model belum dilatih.** Buka menu Data Rekam Medis sebagai admin, lalu tekan tombol *Latih Ulang Model*.
 
-### Manual Label Encoding Mappings (Single Source of Truth):
-Untuk menjamin hasil prediksi yang konsisten, mapping kategorikal telah di-hardcode di `ml-service/src/preprocessing.py`:
+**Koneksi basis data gagal.** Periksa kredensial pada `.env` dan pastikan layanan MySQL sudah berjalan.
 
-| Fitur | Mapping Nilai (Encoded) |
-| :--- | :--- |
-| **Usia** | Produktif (0), Lanjut (1) |
-| **Gender** | Laki-Laki (0), Perempuan (1) |
-| **Status Gizi** | Kurang (0), Normal (1), Lebih (2) |
-| **DM / HIV** | Tidak (0), Ada/Ya (1) |
-| **Kepatuhan Obat** | Patuh (0), Tidak Patuh (1) |
-| **Efek Samping** | Tidak Ada Keluhan (0), Ada Keluhan (1) |
-| **Pengobatan** | Jangka Pendek (0), Jangka Panjang (1) |
-| **Hasil** | Berhasil (0), Tidak Berhasil (1) |
-
----
-
-## 🛠️ Pemecahan Masalah (Troubleshooting)
-
-- **Port 5000 Digunakan**: Jika ML Service gagal dijalankan karena port 5000 sibuk, gunakan perintah `lsof -ti:5000 | xargs kill -9` di Linux untuk membersihkan port tersebut.
-- **Vite Error**: Pastikan Anda menjalankan `npm run dev` agar CSS dan JavaScript (React) terkompilasi dengan benar.
-- **Database Connection Refused**: Cek kredensial di `.env` dan pastikan server MySQL/XAMPP Anda sudah menyala.
-- **Python Externally Managed**: Jika `pip` error, pastikan Anda sudah masuk ke `venv` (virtual environment) sesuai langkah di atas.
-
----
-
-## 📜 Lisensi
-Proyek ini dikembangkan untuk tujuan medis dan riset. Lisensi terbuka [MIT](LICENSE).
+**Layanan klasifikasi tidak dapat dihubungi.** Pastikan `ML_SERVICE_URL` pada `.env` sesuai dan layanan Flask sudah berjalan.

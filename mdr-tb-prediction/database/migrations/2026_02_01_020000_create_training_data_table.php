@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             
             // Data Demografi
-            $table->string('usia'); // Usia Produktif / Usia Lanjut
+            $table->string('usia'); // Kategori usia, turunan dari ket_usia
             $table->integer('ket_usia'); // Umur dalam tahun
             $table->string('jenis_kelamin');
             $table->string('status_bekerja');

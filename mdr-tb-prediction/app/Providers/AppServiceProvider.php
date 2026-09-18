@@ -2,26 +2,22 @@
 
 namespace App\Providers;
 
+use App\Services\MlServiceClient;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\URL; // <--- Tambahkan import ini
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        // Konfigurasi layanan ML dibaca dari config/ml.php, bukan langsung dari env,
+        // agar tetap benar setelah perintah config:cache dijalankan.
+        $this->app->singleton(MlServiceClient::class, fn () => MlServiceClient::make());
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        // Tambahkan baris ini untuk memaksa HTTPS di server produksi
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
         }

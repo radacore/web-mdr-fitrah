@@ -10,89 +10,58 @@ class ProfileTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_profile_page_is_displayed(): void
+    public function test_halaman_profil_dapat_diakses(): void
     {
         $user = User::factory()->create();
 
-        $response = $this
-            ->actingAs($user)
-            ->get('/profile');
-
-        $response->assertOk();
+        $this->actingAs($user)
+            ->get('/profile')
+            ->assertOk();
     }
 
-    public function test_profile_information_can_be_updated(): void
+    public function test_informasi_profil_dapat_diperbarui(): void
     {
         $user = User::factory()->create();
 
-        $response = $this
-            ->actingAs($user)
+        $this->actingAs($user)
             ->patch('/profile', [
-                'name' => 'Test User',
-                'email' => 'test@example.com',
-            ]);
-
-        $response
+                'name' => 'Tenaga Medis Baru',
+                'email' => 'tenagamedis.baru@mdrtb.test',
+            ])
             ->assertSessionHasNoErrors()
             ->assertRedirect('/profile');
 
         $user->refresh();
 
-        $this->assertSame('Test User', $user->name);
-        $this->assertSame('test@example.com', $user->email);
-        $this->assertNull($user->email_verified_at);
+        $this->assertSame('Tenaga Medis Baru', $user->name);
+        $this->assertSame('tenagamedis.baru@mdrtb.test', $user->email);
     }
 
-    public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
+    public function test_email_yang_sudah_terpakai_ditolak(): void
     {
         $user = User::factory()->create();
+        $lain = User::factory()->create();
 
-        $response = $this
-            ->actingAs($user)
-            ->patch('/profile', [
-                'name' => 'Test User',
-                'email' => $user->email,
-            ]);
-
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect('/profile');
-
-        $this->assertNotNull($user->refresh()->email_verified_at);
-    }
-
-    public function test_user_can_delete_their_account(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->delete('/profile', [
-                'password' => 'password',
-            ]);
-
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect('/');
-
-        $this->assertGuest();
-        $this->assertNull($user->fresh());
-    }
-
-    public function test_correct_password_must_be_provided_to_delete_account(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
+        $this->actingAs($user)
             ->from('/profile')
-            ->delete('/profile', [
-                'password' => 'wrong-password',
-            ]);
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $lain->email,
+            ])
+            ->assertSessionHasErrors('email');
+    }
 
-        $response
-            ->assertSessionHasErrors('password')
-            ->assertRedirect('/profile');
+    /**
+     * Penghapusan akun sendiri tidak disediakan. Pengelolaan akun sepenuhnya
+     * menjadi wewenang admin melalui menu Manajemen Akun (Gambar 6).
+     */
+    public function test_akun_tidak_dapat_dihapus_oleh_pemiliknya(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->delete('/profile')
+            ->assertStatus(405);
 
         $this->assertNotNull($user->fresh());
     }

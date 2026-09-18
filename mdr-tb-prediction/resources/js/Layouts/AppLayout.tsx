@@ -1,6 +1,3 @@
-import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/ShadcnComponents/ui/sidebar";
-import { AppSidebar } from "@/ShadcnComponents/app-sidebar";
-import { Separator } from "@/ShadcnComponents/ui/separator";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -8,9 +5,19 @@ import {
     BreadcrumbList,
     BreadcrumbPage,
     BreadcrumbSeparator,
-} from "@/ShadcnComponents/ui/breadcrumb";
-import { Toaster } from "@/ShadcnComponents/ui/sonner";
-import { Fragment, PropsWithChildren, ReactNode } from "react";
+} from '@/ShadcnComponents/ui/breadcrumb';
+import { Separator } from '@/ShadcnComponents/ui/separator';
+import { Toaster } from '@/ShadcnComponents/ui/sonner';
+import {
+    SidebarInset,
+    SidebarProvider,
+    SidebarTrigger,
+} from '@/ShadcnComponents/ui/sidebar';
+import { AppSidebar } from '@/ShadcnComponents/app-sidebar';
+import { PageProps } from '@/types';
+import { usePage } from '@inertiajs/react';
+import { Fragment, PropsWithChildren, ReactNode, useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface Props extends PropsWithChildren {
     header?: ReactNode;
@@ -18,6 +25,14 @@ interface Props extends PropsWithChildren {
 }
 
 export default function AppLayout({ children, header, breadcrumbs }: Props) {
+    const { flash } = usePage<PageProps>().props;
+
+    // Menampilkan pesan hasil aksi dari server
+    useEffect(() => {
+        if (flash?.success) toast.success(flash.success);
+        if (flash?.error) toast.error(flash.error);
+    }, [flash?.success, flash?.error]);
+
     return (
         <SidebarProvider>
             <AppSidebar />
@@ -29,15 +44,21 @@ export default function AppLayout({ children, header, breadcrumbs }: Props) {
                         <Breadcrumb>
                             <BreadcrumbList>
                                 {breadcrumbs.map((crumb, index) => (
-                                    <Fragment key={index}>
+                                    <Fragment key={crumb.label}>
                                         <BreadcrumbItem>
                                             {index < breadcrumbs.length - 1 ? (
-                                                <BreadcrumbLink href={crumb.href}>{crumb.label}</BreadcrumbLink>
+                                                <BreadcrumbLink href={crumb.href}>
+                                                    {crumb.label}
+                                                </BreadcrumbLink>
                                             ) : (
-                                                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                                                <BreadcrumbPage>
+                                                    {crumb.label}
+                                                </BreadcrumbPage>
                                             )}
                                         </BreadcrumbItem>
-                                        {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+                                        {index < breadcrumbs.length - 1 && (
+                                            <BreadcrumbSeparator />
+                                        )}
                                     </Fragment>
                                 ))}
                             </BreadcrumbList>

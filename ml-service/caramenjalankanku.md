@@ -1,138 +1,112 @@
-# 🚀 Cara Menjalankan ML Service
+# Layanan Klasifikasi MDR-TB
 
-Panduan lengkap untuk menjalankan **Flask API - Prediksi Keberhasilan Pengobatan MDR-TB** di macOS.
+Layanan Flask yang menangani pemrosesan data, pelatihan model **Random Forest** dengan penyeimbangan data **SMOTE**, serta klasifikasi keberhasilan pengobatan pasien MDR-TB.
 
----
+Layanan ini dipanggil oleh aplikasi web Laravel dan tidak dimaksudkan untuk diakses langsung oleh pengguna akhir.
 
-## 📋 Prerequisites
+## Prasyarat
 
-Pastikan sudah terinstall:
+- Python 3.10 atau lebih baru
+- pip
 
-- **Python 3.10+** (project ini menggunakan Python 3.14.3)
-- **pip** (Python package manager)
-
-Cek versi Python:
+## Instalasi
 
 ```bash
-python3 --version
+cd ml-service
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
----
+Pustaka yang digunakan:
 
-## 🔧 Instalasi
+| Pustaka | Kegunaan |
+| :-- | :-- |
+| `flask`, `flask-cors` | Kerangka kerja web dan izin lintas asal |
+| `pandas`, `numpy` | Pengolahan dan komputasi data |
+| `scikit-learn` | Random Forest, pembagian data, pencarian *grid*, metrik evaluasi |
+| `imbalanced-learn` | Teknik SMOTE untuk penyeimbangan kelas |
+| `joblib` | Penyimpanan dan pemuatan model |
+| `gunicorn` | Server WSGI untuk mode produksi |
 
-### 1. Masuk ke folder project
+## Menjalankan Layanan
 
-```bash
-cd "/Users/rada/Downloads/kak sri/ml-service"
-```
-
-### 2. Install dependencies
-
-```bash
-pip3 install -r requirements.txt
-```
-
-**Dependencies yang diinstall:**
-
-- `flask==3.0.0` - Web framework
-- `flask-cors==4.0.0` - CORS support
-- `pandas>=2.2.0` - Data manipulation
-- `numpy>=2.0.0` - Numerical computing
-- `scikit-learn>=1.5.0` - Machine learning
-- `joblib==1.3.2` - Model serialization
-- `gunicorn==21.2.0` - WSGI server
-- `python-dotenv==1.0.0` - Environment variables
-- `requests>=2.31.0` - HTTP client
-- `imbalanced-learn>=0.12.0` - SMOTE oversampling
-- `shap>=0.45.0` - SHAP interpretability (notebook)
-- `matplotlib>=3.8.0` - Plotting (notebook)
-- `seaborn>=0.13.0` - Statistical plots (notebook)
-- `scipy>=1.11.0` - Statistical functions
-- `jupyter>=1.0.0` - Jupyter notebook
-
----
-
-## ▶️ Menjalankan Server
-
-### Mode Development (Debug)
+Mode pengembangan:
 
 ```bash
 python3 app.py
 ```
 
-Server akan berjalan di:
-
-- **Local:** `http://127.0.0.1:5000`
-- **Network:** `http://0.0.0.0:5000`
-
-### Mode Production (dengan Gunicorn)
+Mode produksi:
 
 ```bash
 gunicorn --bind 0.0.0.0:5000 app:app
 ```
 
----
+Layanan berjalan pada `http://localhost:5000`. Tekan `Ctrl+C` untuk menghentikan.
 
-## 🛑 Menghentikan Server
+Model yang tersimpan pada direktori `models/` dimuat otomatis saat layanan dijalankan.
 
-Tekan **`Ctrl + C`** di terminal tempat server berjalan.
+## Struktur Direktori
 
----
+```
+ml-service/
+├── app.py                  Endpoint REST API
+├── requirements.txt        Daftar pustaka
+├── caramenjalankanku.md    Panduan ini
+├── data/
+│   └── data_uji_ml.csv     Data rekam medis penelitian (175 data)
+├── models/
+│   ├── preprocessor.pkl    Objek pemroses data beserta pemetaan label
+│   ├── random_forest.pkl   Model hasil pelatihan
+│   └── model_info.pkl      Parameter terbaik, hasil evaluasi, dan informasi SMOTE
+└── src/
+    ├── preprocessing.py    Pembersihan data, rekayasa fitur, label encoding
+    ├── training.py         Pembagian data, SMOTE, hyperparameter tuning
+    └── evaluation.py       Confusion matrix dan metrik evaluasi
+```
 
-## 🧪 Testing API
+## Daftar Endpoint
 
-### 1. Health Check
+| Metode | Endpoint | Keterangan |
+| :-- | :-- | :-- |
+| `GET` | `/health` | Status layanan dan ketersediaan model |
+| `GET` | `/features` | Daftar variabel beserta pemetaan label |
+| `GET` | `/statistics` | Hasil evaluasi model yang sedang digunakan |
+| `POST` | `/predict` | Klasifikasi satu data pasien |
+| `POST` | `/retrain` | Pelatihan ulang model menggunakan data yang dikirim |
+| `POST` | `/compare-smote` | Perbandingan performa model dengan dan tanpa SMOTE |
+| `POST` | `/test-scenarios` | Variasi proporsi pembagian data dan jumlah pohon |
+
+Endpoint `/retrain`, `/compare-smote`, dan `/test-scenarios` menerima data pada kunci `data` berupa senarai objek. Pelatihan pada `/compare-smote` dan `/test-scenarios` bersifat sementara dan tidak mengubah model yang sedang digunakan.
+
+## Contoh Penggunaan
+
+Memeriksa status layanan:
 
 ```bash
 curl http://localhost:5000/health
 ```
 
-**Response:**
-
 ```json
 {
   "status": "healthy",
   "is_trained": true,
-  "models_available": [
-    "Logistic Regression",
-    "Decision Tree",
-    "Support Vector Machine"
-  ]
+  "model": "Random Forest"
 }
 ```
 
-### 2. Lihat Fitur yang Dibutuhkan
-
-```bash
-curl http://localhost:5000/features
-```
-
-### 3. Lihat Info Model
-
-```bash
-curl http://localhost:5000/models
-```
-
-### 4. Lihat Statistik Evaluasi
-
-```bash
-curl http://localhost:5000/statistics
-```
-
-### 5. Prediksi Single Input
+Klasifikasi satu data pasien:
 
 ```bash
 curl -X POST http://localhost:5000/predict \
   -H "Content-Type: application/json" \
   -d '{
-    "usia": "Usia Produktif",
     "ket_usia": 35,
     "jenis_kelamin": "Laki-Laki",
     "status_bekerja": "Bekerja",
     "bb": 65,
     "tb": 170,
-    "imt": 22.5,
     "status_gizi": "Gizi Normal",
     "status_merokok": "Tidak Merokok",
     "pemeriksaan_kontak": "Ya",
@@ -141,216 +115,109 @@ curl -X POST http://localhost:5000/predict \
     "komorbiditas": "Tidak Ada",
     "kepatuhan_minum_obat": "Patuh",
     "efek_samping_obat": "Tidak Ada Keluhan",
-    "riwayat_pengobatan": "Kasus Baru",
+    "riwayat_pengobatan": "Baru",
     "panduan_pengobatan": "Jangka Pendek"
   }'
 ```
 
-**Response:**
+Kategori usia (`usia`) dan IMT tidak perlu dikirim karena dihitung dari `ket_usia`, `bb`, dan `tb`. Bila dikirim, nilainya diabaikan.
 
 ```json
 {
   "prediction": "Berhasil",
   "prediction_code": 0,
-  "confidence": 95.5,
-  "model_used": "Support Vector Machine",
+  "confidence": 94.5,
+  "model_used": "Random Forest",
   "probabilities": {
-    "Berhasil": 95.5,
-    "Tidak Berhasil": 4.5
+    "Berhasil": 94.5,
+    "Tidak Berhasil": 5.5
   }
 }
 ```
 
----
+## Variabel Masukan
 
-## 📡 API Endpoints
+Dari 17 variabel, dua di antaranya merupakan **variabel turunan** yang selalu dihitung ulang oleh layanan, bukan diisi pengguna:
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| `GET` | `/health` | Cek status server dan model |
-| `GET` | `/features` | Daftar fitur yang dibutuhkan untuk prediksi |
-| `GET` | `/models` | Info semua model yang tersedia |
-| `GET` | `/statistics` | Statistik evaluasi lengkap + bootstrap CI + class distribution |
-| `GET` | `/curves` | Data ROC, Precision-Recall, dan Calibration curve per model |
-| `GET` | `/calibration` | Data Calibration curve + Brier Score per model |
-| `GET` | `/interpretability` | Odds Ratio (LR), Feature Importance (DT), Permutation Importance (SVM) |
-| `POST` | `/predict` | Prediksi untuk single input |
-| `POST` | `/train` | Train model dengan data dari database Laravel |
-| `POST` | `/retrain` | Retrain model dengan data JSON (opsional: `use_smote: true`) |
-| `POST` | `/compare-smote` | Komparasi SMOTE vs Non-SMOTE (tidak menyentuh model produksi) |
+| Variabel turunan | Dihitung dari | Aturan |
+| :-- | :-- | :-- |
+| `IMT` | `BB` dan `TB` | BB / (TB dalam meter)² |
+| `Usia` | `Ket.Usia` | Kurang dari 45 tahun tergolong Usia Produktif, selebihnya Usia Lanjut |
 
----
+Perhitungan otomatis ini menjaga kedua variabel selalu selaras dengan data pasien, sehingga nilai yang bertentangan tidak dapat masuk ke dalam model.
 
-## 📁 Struktur Project
+### Variabel numerik (4)
 
-```
-ml-service/
-├── app.py                 # Flask API server
-├── requirements.txt       # Python dependencies
-├── caramenjalankanku.md   # Panduan ini
-├── data/
-│   └── data_uji_ml.csv    # Data training (177 records)
-├── models/
-│   ├── preprocessor.pkl           # Data preprocessor
-│   ├── logistic_regression.pkl    # Model Logistic Regression
-│   ├── decision_tree.pkl          # Model Decision Tree
-│   ├── support_vector_machine.pkl # Model SVM
-│   └── best_model_info.pkl        # Info model terbaik
-├── src/
-│   ├── __init__.py
-│   ├── preprocessing.py   # Data preprocessing module
-│   ├── training.py        # Model training module (+ SMOTE support)
-│   ├── evaluation.py      # Model evaluation module (+ ROC, PR, Calibration, Bootstrap CI)
-│   └── interpretability.py # Odds Ratio, Feature Importance, Permutation Importance
-├── notebooks/
-│   ├── analysis_for_dissertation.ipynb  # Notebook figur disertasi
-│   └── figures/                         # Output figur PNG/PDF
-└── tests/                 # Test files
-```
+| Variabel | Keterangan |
+| :-- | :-- |
+| `Ket.Usia` | Usia pasien dalam tahun |
+| `BB` | Berat badan dalam kilogram |
+| `TB` | Tinggi badan dalam sentimeter |
+| `IMT` | Indeks massa tubuh, variabel turunan dari BB dan TB |
 
----
+### Variabel kategorikal (13)
 
-## 🤖 Model Machine Learning
+| Variabel | Nilai yang diterima |
+| :-- | :-- |
+| `Usia` | Usia Produktif, Usia Lanjut (variabel turunan dari Ket.Usia) |
+| `Jenis Kelamin` | Laki-Laki, Perempuan |
+| `Status Bekerja` | Bekerja, Tidak Bekerja |
+| `Status Gizi` | Gizi Kurang, Gizi Normal, Gizi Lebih |
+| `Status Merokok` | Merokok, Tidak Merokok |
+| `Pemeriksaan Kontak` | Ya, Tidak |
+| `Riwayat_DM` | Ada, Tidak |
+| `Riwayat_HIV` | Ada, Tidak |
+| `Komorbiditas` | Ada, Tidak Ada |
+| `Kepatuhan Minum Obat` | Patuh, Tidak Patuh |
+| `Efek Samping Obat` | Ada Keluhan, Tidak Ada Keluhan |
+| `Riwayat Pengobatan Sebelumnya` | Baru, Pengobatan Ulang |
+| `Panduan Pengobatan` | Jangka Pendek, Jangka Panjang |
 
-Project ini memiliki **3 model** yang dilatih:
+Pemetaan label yang berlaku dapat diperiksa melalui endpoint `/features`. Nilai yang dikirim aplikasi web harus sesuai dengan pemetaan tersebut.
 
-| Model | Deskripsi |
-|-------|-----------|
-| **Logistic Regression** | Model linear untuk klasifikasi biner |
-| **Decision Tree** | Model tree-based dengan max_depth=10 |
-| **Support Vector Machine** | Model SVM dengan kernel RBF |
+### Variabel target
 
-**Best Model:** Support Vector Machine (F1 Score: ~0.85)
+| Variabel | Nilai |
+| :-- | :-- |
+| `Keberhasilan Pengobatan` | Berhasil (0), Tidak Berhasil (1) |
 
----
+Kelas `Tidak Berhasil` diperlakukan sebagai kelas positif pada perhitungan *precision*, *recall*, dan *F1-score*.
 
-## 📊 Fitur untuk Prediksi
+## Proses Pelatihan
 
-### Numerical Features (4)
+1. Data dibersihkan dari duplikat dan nilai kosong.
+2. Variabel turunan dihitung: IMT dari berat dan tinggi badan, kategori usia dari usia dalam tahun.
+3. Variabel kategorikal dikonversi menjadi numerik dengan pemetaan tetap.
+4. Data dibagi menjadi 80% data latih dan 20% data uji secara *stratified*.
+5. Normalisasi `StandardScaler` diterapkan sebelum SMOTE, agar perhitungan jarak antartetangga pada SMOTE tidak didominasi variabel berskala besar seperti tinggi badan.
+6. SMOTE diterapkan hanya pada data latih, sehingga data uji tetap merepresentasikan distribusi asli.
+7. Pencarian *grid* dijalankan dengan validasi silang 5 lipatan, dinilai berdasarkan *F1-score*:
 
-| Fitur | Deskripsi | Tipe |
-|-------|-----------|------|
-| `Ket.Usia` | Keterangan Usia | Integer |
-| `BB` | Berat Badan (kg) | Float |
-| `TB` | Tinggi Badan (cm) | Float |
-| `IMT` | Indeks Massa Tubuh | Float |
+   | Parameter | Nilai yang diuji |
+   | :-- | :-- |
+   | `n_estimators` | 50, 100, 200, 300 |
+   | `max_depth` | 3, 5, 7, 10, tanpa batas |
+   | `min_samples_split` | 2, 5, 10 |
+   | `random_state` | 42 |
 
-### Categorical Features (13)
+8. Model dievaluasi pada data uji, kemudian disimpan ke direktori `models/`.
 
-| Fitur | Nilai Valid |
-|-------|-------------|
-| `Usia` | "Usia Produktif", "Usia Lanjut" |
-| `Jenis Kelamin` | "Laki-Laki", "Perempuan" |
-| `Status Bekerja` | "Bekerja", "Tidak Bekerja" |
-| `Status Gizi` | "Gizi Kurang", "Gizi Normal", "Gizi Lebih" |
-| `Status Merokok` | "Merokok", "Tidak Merokok" |
-| `Pemeriksaan Kontak` | "Ya", "Tidak" |
-| `Riwayat_DM` | "Ada", "Tidak" |
-| `Riwayat_HIV` | "Ada", "Tidak" |
-| `Komorbiditas` | "Ada", "Tidak Ada" |
-| `Kepatuhan Minum Obat` | "Patuh", "Tidak Patuh" |
-| `Efek Samping Obat` | "Ada Keluhan", "Tidak Ada Keluhan" |
-| `Riwayat Pengobatan Sebelumnya` | "Kasus Baru", "Kasus Lama", "Pengobatan Ulang" |
-| `Panduan Pengobatan` | "Jangka Pendek", "Jangka Panjang" |
+Tahap 5 sampai 7 dirangkai dalam satu `imblearn.pipeline.Pipeline` dengan urutan `scaler → smote → classifier`. Perangkaian ini penting: bila SMOTE dijalankan di luar *pipeline*, data sintetis akan ikut masuk ke lipatan validasi sehingga metrik *cross validation* menjadi terlalu optimistis (*data leakage*).
 
-### Target
+## Pemecahan Masalah
 
-| Fitur | Nilai |
-|-------|-------|
-| `Keberhasilan Pengobatan` | "Berhasil", "Tidak Berhasil" |
-
----
-
-## ⚙️ Konfigurasi Environment
-
-### LARAVEL_API_URL
-
-Default: `http://localhost:8000/api`
-
-Untuk mengubah URL Laravel API:
+**`ModuleNotFoundError`.** Pustaka belum terpasang:
 
 ```bash
-export LARAVEL_API_URL="http://your-laravel-api.com/api"
-python3 app.py
+pip install -r requirements.txt
 ```
 
----
-
-## 🔍 Troubleshooting
-
-### Error: `ModuleNotFoundError: No module named 'xxx'`
+**`Address already in use`.** Port 5000 masih dipakai proses lain:
 
 ```bash
-pip3 install -r requirements.txt
+lsof -ti:5000 | xargs kill -9
 ```
 
-### Error: `Address already in use`
+**`Model belum dilatih`.** Direktori `models/` belum berisi berkas `.pkl`. Jalankan pelatihan melalui menu Data Rekam Medis pada aplikasi web, atau kirim permintaan ke endpoint `/retrain`.
 
-Server sudah berjalan di port 5000. Hentikan dengan:
-
-```bash
-pkill -f "python3 app.py"
-```
-
-### Error: `Models not trained yet`
-
-Model belum dilatih. Pastikan folder `models/` berisi file `.pkl`.
-
-### Port 5000 tidak bisa diakses
-
-Cek firewall macOS atau gunakan port lain:
-
-```bash
-python3 app.py --port 5001
-```
-
----
-
-## 📓 Menjalankan Jupyter Notebook
-
-Notebook `notebooks/analysis_for_dissertation.ipynb` menghasilkan semua figur publikasi untuk disertasi.
-
-```bash
-cd notebooks
-jupyter notebook analysis_for_dissertation.ipynb
-```
-
-**Figur yang dihasilkan:**
-- Correlation heatmap
-- Class distribution (pie + bar)
-- Bootstrap 95% CI
-- ROC & Precision-Recall curves
-- Confusion matrix heatmaps
-- Calibration curves + Brier scores
-- Feature importance (Decision Tree)
-- Odds Ratio forest plot (Logistic Regression)
-- Permutation importance (SVM)
-- SHAP summary, bar, dan waterfall plots
-- Nested cross-validation results
-- Sensitivity analysis
-
-Semua figur disimpan di `notebooks/figures/` dalam format PNG (300 DPI) dan PDF.
-
----
-
-## 📝 Catatan Penting
-
-1. **Model sudah pretrained** - File model `.pkl` sudah ada di folder `models/`, tidak perlu train ulang kecuali ada data baru.
-
-2. **Auto-load on startup** - Saat server dijalankan, model akan otomatis dimuat dari file `.pkl`.
-
-3. **Laravel Integration** - Endpoint `/train` dan `/retrain` terintegrasi dengan Laravel API untuk fetch data dari database.
-
-4. **Debug Mode** - Server berjalan dengan `debug=True` untuk development. Untuk production, gunakan Gunicorn.
-
----
-
-## 📞 Support
-
-Jika ada masalah, cek log di terminal atau file `flask.log`.
-
----
-
-**Last Updated:** Februari 2026  
-**Python Version:** 3.14.3  
-**Platform:** macOS Sonoma
+**Data latih tidak memadai.** Endpoint pelatihan memerlukan minimal 10 data. Pastikan basis data aplikasi web sudah berisi data rekam medis.

@@ -1,46 +1,39 @@
-import InputError from '@/ShadcnComponents/InputError';
-import InputLabel from '@/ShadcnComponents/InputLabel';
-import PrimaryButton from '@/ShadcnComponents/PrimaryButton';
-import TextInput from '@/ShadcnComponents/TextInput';
-import { Transition } from '@headlessui/react';
+import { Field } from '@/ShadcnComponents/Field';
+import { Button } from '@/ShadcnComponents/ui/button';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/ShadcnComponents/ui/card';
+import { Input } from '@/ShadcnComponents/ui/input';
 import { useForm } from '@inertiajs/react';
+import { CheckCircle2 } from 'lucide-react';
 import { FormEventHandler, useRef } from 'react';
 
-export default function UpdatePasswordForm({
-    className = '',
-}: {
-    className?: string;
-}) {
+export default function UpdatePasswordForm() {
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
-    const {
-        data,
-        setData,
-        errors,
-        put,
-        reset,
-        processing,
-        recentlySuccessful,
-    } = useForm({
-        current_password: '',
-        password: '',
-        password_confirmation: '',
-    });
+    const { data, setData, errors, put, reset, processing, recentlySuccessful } =
+        useForm({
+            current_password: '',
+            password: '',
+            password_confirmation: '',
+        });
 
-    const updatePassword: FormEventHandler = (e) => {
+    const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
         put(route('password.update'), {
             preserveScroll: true,
             onSuccess: () => reset(),
-            onError: (errors) => {
-                if (errors.password) {
+            onError: (galat) => {
+                if (galat.password) {
                     reset('password', 'password_confirmation');
                     passwordInput.current?.focus();
                 }
-
-                if (errors.current_password) {
+                if (galat.current_password) {
                     reset('current_password');
                     currentPasswordInput.current?.focus();
                 }
@@ -49,98 +42,81 @@ export default function UpdatePasswordForm({
     };
 
     return (
-        <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900">
-                    Update Password
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-600">
-                    Ensure your account is using a long, random password to stay
-                    secure.
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">Ubah Kata Sandi</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                    Gunakan kata sandi yang panjang dan sulit ditebak untuk menjaga
+                    keamanan data rekam medis.
                 </p>
-            </header>
-
-            <form onSubmit={updatePassword} className="mt-6 space-y-6">
-                <div>
-                    <InputLabel
-                        htmlFor="current_password"
-                        value="Current Password"
-                    />
-
-                    <TextInput
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={submit} className="space-y-4">
+                    <Field
                         id="current_password"
-                        ref={currentPasswordInput}
-                        value={data.current_password}
-                        onChange={(e) =>
-                            setData('current_password', e.target.value)
-                        }
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="current-password"
-                    />
-
-                    <InputError
-                        message={errors.current_password}
-                        className="mt-2"
-                    />
-                </div>
-
-                <div>
-                    <InputLabel htmlFor="password" value="New Password" />
-
-                    <TextInput
-                        id="password"
-                        ref={passwordInput}
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div>
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
-
-                    <TextInput
-                        id="password_confirmation"
-                        value={data.password_confirmation}
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                    />
-
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
-
-                    <Transition
-                        show={recentlySuccessful}
-                        enter="transition ease-in-out"
-                        enterFrom="opacity-0"
-                        leave="transition ease-in-out"
-                        leaveTo="opacity-0"
+                        label="Kata Sandi Saat Ini"
+                        error={errors.current_password}
+                        required
                     >
-                        <p className="text-sm text-gray-600">
-                            Saved.
-                        </p>
-                    </Transition>
-                </div>
-            </form>
-        </section>
+                        <Input
+                            id="current_password"
+                            ref={currentPasswordInput}
+                            type="password"
+                            value={data.current_password}
+                            onChange={(e) => setData('current_password', e.target.value)}
+                            autoComplete="current-password"
+                            aria-invalid={Boolean(errors.current_password)}
+                        />
+                    </Field>
+
+                    <Field
+                        id="password"
+                        label="Kata Sandi Baru"
+                        error={errors.password}
+                        hint="Minimal 8 karakter."
+                        required
+                    >
+                        <Input
+                            id="password"
+                            ref={passwordInput}
+                            type="password"
+                            value={data.password}
+                            onChange={(e) => setData('password', e.target.value)}
+                            autoComplete="new-password"
+                            aria-invalid={Boolean(errors.password)}
+                        />
+                    </Field>
+
+                    <Field
+                        id="password_confirmation"
+                        label="Konfirmasi Kata Sandi Baru"
+                        error={errors.password_confirmation}
+                        required
+                    >
+                        <Input
+                            id="password_confirmation"
+                            type="password"
+                            value={data.password_confirmation}
+                            onChange={(e) =>
+                                setData('password_confirmation', e.target.value)
+                            }
+                            autoComplete="new-password"
+                        />
+                    </Field>
+
+                    <div className="flex items-center gap-3">
+                        <Button type="submit" disabled={processing}>
+                            {processing ? 'Menyimpan...' : 'Ubah Kata Sandi'}
+                        </Button>
+                        {recentlySuccessful && (
+                            <span className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="size-4" />
+                                Kata sandi diperbarui
+                            </span>
+                        )}
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
     );
 }

@@ -18,21 +18,26 @@ class Prediction extends Model
         'model_used',
         'confidence_score',
         'probabilities',
-        'factor_contributions',
+        'feature_importance',
     ];
 
     protected $casts = [
         'patient_data' => 'array',
         'probabilities' => 'array',
-        'factor_contributions' => 'array',
+        'feature_importance' => 'array',
         'confidence_score' => 'float',
     ];
 
     /**
-     * Get the user that owns the prediction.
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function isBerhasil(): bool
+    {
+        return $this->prediction_result === 'Berhasil';
     }
 }

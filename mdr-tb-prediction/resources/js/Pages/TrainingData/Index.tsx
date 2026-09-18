@@ -1,347 +1,392 @@
-import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import { Button } from '@/ShadcnComponents/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/ShadcnComponents/ui/card';
-import { Input } from '@/ShadcnComponents/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ShadcnComponents/ui/table';
-import { Badge } from '@/ShadcnComponents/ui/badge';
 import { DeleteConfirmModal } from '@/ShadcnComponents/DeleteConfirmModal';
+import { Pagination } from '@/ShadcnComponents/Pagination';
+import { Alert, AlertDescription, AlertTitle } from '@/ShadcnComponents/ui/alert';
+import { Badge } from '@/ShadcnComponents/ui/badge';
+import { Button } from '@/ShadcnComponents/ui/button';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/ShadcnComponents/ui/card';
+import { Input } from '@/ShadcnComponents/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/ShadcnComponents/ui/select';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/ShadcnComponents/ui/table';
+import { useMlProcess } from '@/hooks/use-ml-process';
+import { Paginated } from '@/types';
+import { Head, Link, router } from '@inertiajs/react';
+import {
+    CheckCircle2,
+    Eye,
+    Loader2,
+    Pencil,
+    Plus,
+    RefreshCw,
+    Search,
+    Sparkles,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
-import { Plus, Search, Trash2, Edit, RefreshCw, Database, CheckCircle2, AlertCircle, Brain, FlaskConical, Percent, SplitSquareVertical, Columns3, Cpu, Filter } from 'lucide-react';
-import { toast } from 'sonner';
-import TerminalRetrainModal from '@/ShadcnComponents/TerminalRetrainModal';
 
-interface TrainingDataItem {
+interface Baris {
     id: number;
     usia: string;
     ket_usia: number;
     jenis_kelamin: string;
-    status_bekerja: string;
     bb: number;
     tb: number;
     imt: number;
     status_gizi: string;
-    status_merokok: string;
-    pemeriksaan_kontak: string;
-    riwayat_dm: string;
-    riwayat_hiv: string;
-    komorbiditas: string;
     kepatuhan_minum_obat: string;
-    efek_samping_obat: string;
-    keterangan_efek_samping: string | null;
-    riwayat_pengobatan: string;
-    panduan_pengobatan: string;
     keberhasilan_pengobatan: string;
-    created_at: string;
+}
+
+interface Stats {
+    total: number;
+    berhasil: number;
+    tidak_berhasil: number;
+    persen_berhasil: number;
+    persen_tidak_berhasil: number;
+    rasio_ketidakseimbangan: number;
+    kelas_minoritas: string;
+    training_count: number;
+    testing_count: number;
+    split_ratio: string;
+}
+
+interface HasilRetrain {
+    status?: string;
+    message?: string;
+    cleaned_data_count?: number;
+    test_metrics?: { accuracy: number; recall: number; f1_score: number };
+    best_params?: Record<string, string | number | null>;
+    error?: string;
 }
 
 interface Props {
-    trainingData: {
-        data: TrainingDataItem[];
-        current_page: number;
-        last_page: number;
-        per_page: number;
-        total: number;
-        links: Array<{ url: string | null; label: string; active: boolean }>;
-    };
-    filters: {
-        search?: string;
-        outcome?: string;
-    };
-    stats: {
-        total: number;
-        berhasil: number;
-        tidak_berhasil: number;
-        data_training: number;
-        data_validation: number;
-        data_testing: number;
-        jumlah_fitur: number;
-        model_aktif: number;
-    };
+    trainingData: Paginated<Baris>;
+    filters: { search?: string; outcome?: string };
+    stats: Stats;
 }
 
 export default function Index({ trainingData, filters, stats }: Props) {
-    const [search, setSearch] = useState(filters.search || '');
-    const [isRetraining, setIsRetraining] = useState(false);
-    const [showTerminal, setShowTerminal] = useState(false);
-    const [useSMOTE, setUseSMOTE] = useState(false);
-    const [deleteId, setDeleteId] = useState<number | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+    const [search, setSearch] = useState(filters.search ?? '');
+    const [target, setTarget] = useState<Baris | null>(null);
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        router.get(route('training-data.index'), { search }, { preserveState: true });
-    };
+    const {
+        data: hasilRetrain,
+        memuat: melatih,
+        galat,
+        jalankan: latihUlang,
+    } = useMlProcess<HasilRetrain>('/api/retrain');
 
-    const handleDelete = () => {
-        if (!deleteId) return;
-
-        setIsDeleting(true);
-        router.delete(route('training-data.destroy', deleteId), {
-            onSuccess: () => {
-                toast.success('Data training berhasil dihapus');
-                setDeleteId(null);
-            },
-            onError: () => {
-                toast.error('Gagal menghapus data training');
-            },
-            onFinish: () => {
-                setIsDeleting(false);
-            },
-        });
-    };
-
-    const handleRetrain = (withSMOTE: boolean) => {
-        setUseSMOTE(withSMOTE);
-        setShowTerminal(true);
+    const terapkanFilter = (perubahan: Record<string, string | undefined>) => {
+        router.get(
+            route('training-data.index'),
+            { search, outcome: filters.outcome, ...perubahan },
+            { preserveState: true, replace: true },
+        );
     };
 
     return (
-        <AppLayout breadcrumbs={[{ label: 'Data Training' }]}>
-            <Head title="Data Training" />
+        <AppLayout breadcrumbs={[{ label: 'Data Rekam Medis' }]}>
+            <Head title="Data Rekam Medis" />
 
             <div className="space-y-6">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    {/* Card 1: Distribusi Data */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Data</CardTitle>
-                            <Database className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold mb-3">{stats.total}</div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                        <span>Berhasil</span>
-                                    </div>
-                                    <span className="font-semibold text-green-600">{stats.berhasil}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <AlertCircle className="h-4 w-4 text-red-500" />
-                                        <span>Tidak Berhasil</span>
-                                    </div>
-                                    <span className="font-semibold text-red-600">{stats.tidak_berhasil}</span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Card 2: Pembagian Data */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Pembagian Data</CardTitle>
-                            <Brain className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <p className="mb-3 text-xs text-muted-foreground">
-                                Pembagian dihitung dari total data mentah ({stats.total} baris) memakai
-                                rumus split yang sama dengan model (test 15%, validation 15%, training sisanya).
-                                Saat training berjalan, ML service melakukan pembersihan tambahan
-                                (drop missing value &amp; outlier IQR) sehingga jumlah baris yang
-                                benar-benar dipakai untuk melatih model bisa lebih kecil dari {stats.total}
-                                (lihat halaman Komparasi SMOTE).
-                            </p>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-purple-500" />
-                                        <span>Training</span>
-                                    </div>
-                                    <span className="font-semibold text-purple-600">70% <span className="text-muted-foreground font-normal">({stats.data_training})</span></span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-orange-500" />
-                                        <span>Validation</span>
-                                    </div>
-                                    <span className="font-semibold text-orange-600">15% <span className="text-muted-foreground font-normal">({stats.data_validation})</span></span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-purple-500" />
-                                        <span>Testing</span>
-                                    </div>
-                                    <span className="font-semibold text-purple-600">15% <span className="text-muted-foreground font-normal">({stats.data_testing})</span></span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h1 className="text-2xl font-semibold">Data Rekam Medis</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Dataset rekam medis pasien MDR-TB yang digunakan untuk
+                            melatih model klasifikasi.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" asChild>
+                            <Link href={route('training-data.cleaning')}>
+                                <Sparkles className="mr-2 size-4" />
+                                Pembersihan Data
+                            </Link>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={latihUlang}
+                            disabled={melatih || stats.total < 10}
+                        >
+                            {melatih ? (
+                                <Loader2 className="mr-2 size-4 animate-spin" />
+                            ) : (
+                                <RefreshCw className="mr-2 size-4" />
+                            )}
+                            {melatih ? 'Melatih...' : 'Latih Ulang Model'}
+                        </Button>
+                        <Button asChild>
+                            <Link href={route('training-data.create')}>
+                                <Plus className="mr-2 size-4" />
+                                Tambah Data
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
-                {/* Actions */}
+                {galat && (
+                    <Alert variant="destructive">
+                        <AlertTitle>Pelatihan gagal</AlertTitle>
+                        <AlertDescription>{galat}</AlertDescription>
+                    </Alert>
+                )}
+
+                {hasilRetrain?.status === 'success' && (
+                    <Alert>
+                        <CheckCircle2 className="size-4" />
+                        <AlertTitle>Model berhasil dilatih ulang</AlertTitle>
+                        <AlertDescription>
+                            {hasilRetrain.message} Data bersih:{' '}
+                            {hasilRetrain.cleaned_data_count} baris.
+                            {hasilRetrain.test_metrics && (
+                                <>
+                                    {' '}
+                                    Recall data uji:{' '}
+                                    {(hasilRetrain.test_metrics.recall * 100).toFixed(2)}%,
+                                    F1-score:{' '}
+                                    {(hasilRetrain.test_metrics.f1_score * 100).toFixed(2)}
+                                    %.
+                                </>
+                            )}
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                        {
+                            label: 'Total Data',
+                            nilai: stats.total,
+                            keterangan: `${stats.training_count} latih · ${stats.testing_count} uji (${stats.split_ratio})`,
+                        },
+                        {
+                            label: 'Berhasil',
+                            nilai: stats.berhasil,
+                            keterangan: `${stats.persen_berhasil}% dari total`,
+                        },
+                        {
+                            label: 'Tidak Berhasil',
+                            nilai: stats.tidak_berhasil,
+                            keterangan: `${stats.persen_tidak_berhasil}% dari total`,
+                        },
+                        {
+                            label: 'Rasio Ketidakseimbangan',
+                            nilai: `${stats.rasio_ketidakseimbangan}:1`,
+                            keterangan: `Minoritas: ${stats.kelas_minoritas}`,
+                        },
+                    ].map((item) => (
+                        <Card key={item.label}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">
+                                    {item.label}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-2xl font-bold tabular-nums">
+                                    {item.nilai}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {item.keterangan}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
                 <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                            <form onSubmit={handleSearch} className="flex gap-2 flex-1">
+                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <CardTitle className="text-base">
+                            Daftar Data ({trainingData.total})
+                        </CardTitle>
+                        <div className="flex flex-wrap gap-2">
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    terapkanFilter({});
+                                }}
+                                className="relative"
+                            >
+                                <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                                 <Input
-                                    type="text"
-                                    placeholder="Cari data..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="max-w-sm"
+                                    placeholder="Cari data"
+                                    className="w-44 pl-8"
+                                    aria-label="Cari data rekam medis"
                                 />
-                                <Button type="submit" variant="outline">
-                                    <Search className="h-4 w-4 mr-2" />
-                                    Cari
-                                </Button>
                             </form>
-                            <div className="flex gap-2 flex-wrap">
-                                <Link href={route('training-data.cleaning')}>
-                                    <Button variant="outline" className="border-amber-500 text-amber-700 hover:bg-amber-50">
-                                        <Filter className="h-4 w-4 mr-2" />
-                                        Pembersihan Data
-                                    </Button>
-                                </Link>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleRetrain(false)}
-                                    disabled={isRetraining}
+                            <Select
+                                value={filters.outcome ?? 'semua'}
+                                onValueChange={(nilai) =>
+                                    terapkanFilter({
+                                        outcome: nilai === 'semua' ? undefined : nilai,
+                                    })
+                                }
+                            >
+                                <SelectTrigger
+                                    className="w-44"
+                                    aria-label="Filter hasil pengobatan"
                                 >
-                                    <RefreshCw className={`h-4 w-4 mr-2 ${isRetraining ? 'animate-spin' : ''}`} />
-                                    Retrain Tanpa SMOTE
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleRetrain(true)}
-                                    disabled={isRetraining}
-                                    className="border-purple-500 text-purple-600 hover:bg-purple-50"
-                                >
-                                    <RefreshCw className={`h-4 w-4 mr-2 ${isRetraining ? 'animate-spin' : ''}`} />
-                                    Retrain Dengan SMOTE
-                                </Button>
-                                <Link href={route('training-data.create')}>
-                                    <Button>
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Tambah Data
-                                    </Button>
-                                </Link>
-                            </div>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="semua">Semua Hasil</SelectItem>
+                                    <SelectItem value="Berhasil">Berhasil</SelectItem>
+                                    <SelectItem value="Tidak Berhasil">
+                                        Tidak Berhasil
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Table */}
-                <Card>
-                    <CardContent className="pt-6">
+                    </CardHeader>
+                    <CardContent>
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>No</TableHead>
                                         <TableHead>Usia</TableHead>
-                                        <TableHead>JK</TableHead>
-                                        <TableHead>BB/TB</TableHead>
+                                        <TableHead>Jenis Kelamin</TableHead>
+                                        <TableHead className="text-right">BB/TB</TableHead>
+                                        <TableHead className="text-right">IMT</TableHead>
                                         <TableHead>Status Gizi</TableHead>
-                                        <TableHead>Merokok</TableHead>
                                         <TableHead>Kepatuhan</TableHead>
                                         <TableHead>Hasil</TableHead>
                                         <TableHead className="text-right">Aksi</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {trainingData.data.length === 0 ? (
+                                    {trainingData.data.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                                                Tidak ada data
+                                            <TableCell
+                                                colSpan={8}
+                                                className="h-24 text-center text-sm text-muted-foreground"
+                                            >
+                                                Tidak ada data yang cocok.
                                             </TableCell>
                                         </TableRow>
-                                    ) : (
-                                        trainingData.data.map((item, index) => (
-                                            <TableRow key={item.id}>
-                                                <TableCell>
-                                                    {(trainingData.current_page - 1) * trainingData.per_page + index + 1}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-sm">
-                                                        <div className="font-medium">{item.ket_usia} tahun</div>
-                                                        <div className="text-muted-foreground">{item.usia}</div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>{item.jenis_kelamin === 'Laki-Laki' ? 'L' : 'P'}</TableCell>
-                                                <TableCell>
-                                                    <div className="text-sm">
-                                                        {item.bb}kg / {item.tb}cm
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant={
-                                                        item.status_gizi === 'Gizi Normal' ? 'default' :
-                                                            item.status_gizi === 'Gizi Kurang' ? 'destructive' : 'secondary'
-                                                    }>
-                                                        {item.status_gizi}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>{item.status_merokok === 'Merokok' ? 'Ya' : 'Tidak'}</TableCell>
-                                                <TableCell>{item.kepatuhan_minum_obat}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant={item.keberhasilan_pengobatan === 'Berhasil' ? 'default' : 'destructive'}>
-                                                        {item.keberhasilan_pengobatan}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Link href={route('training-data.edit', item.id)}>
-                                                            <Button variant="outline" size="sm">
-                                                                <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                        </Link>
-                                                        <Button
-                                                            variant="destructive"
-                                                            size="sm"
-                                                            onClick={() => setDeleteId(item.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
                                     )}
+                                    {trainingData.data.map((baris) => (
+                                        <TableRow key={baris.id}>
+                                            <TableCell>
+                                                <span className="font-medium tabular-nums">
+                                                    {baris.ket_usia} th
+                                                </span>
+                                                <span className="ml-1.5 text-xs text-muted-foreground">
+                                                    {baris.usia}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell>{baris.jenis_kelamin}</TableCell>
+                                            <TableCell className="text-right tabular-nums">
+                                                {baris.bb}/{baris.tb}
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums">
+                                                {baris.imt}
+                                            </TableCell>
+                                            <TableCell>{baris.status_gizi}</TableCell>
+                                            <TableCell>
+                                                {baris.kepatuhan_minum_obat}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant={
+                                                        baris.keberhasilan_pengobatan ===
+                                                        'Berhasil'
+                                                            ? 'secondary'
+                                                            : 'destructive'
+                                                    }
+                                                >
+                                                    {baris.keberhasilan_pengobatan}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={route(
+                                                                'training-data.show',
+                                                                baris.id,
+                                                            )}
+                                                            aria-label="Lihat detail"
+                                                        >
+                                                            <Eye className="size-4" />
+                                                        </Link>
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={route(
+                                                                'training-data.edit',
+                                                                baris.id,
+                                                            )}
+                                                            aria-label="Ubah data"
+                                                        >
+                                                            <Pencil className="size-4" />
+                                                        </Link>
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => setTarget(baris)}
+                                                        aria-label="Hapus data"
+                                                    >
+                                                        <Trash2 className="size-4 text-destructive" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
                                 </TableBody>
                             </Table>
                         </div>
 
-                        {/* Pagination */}
-                        {trainingData.last_page > 1 && (
-                            <div className="flex justify-center gap-2 mt-4">
-                                {trainingData.links.map((link, index) => (
-                                    <Button
-                                        key={index}
-                                        variant={link.active ? 'default' : 'outline'}
-                                        size="sm"
-                                        disabled={!link.url}
-                                        onClick={() => link.url && router.get(link.url)}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ))}
-                            </div>
-                        )}
+                        <Pagination
+                            links={trainingData.links}
+                            from={trainingData.from}
+                            to={trainingData.to}
+                            total={trainingData.total}
+                        />
                     </CardContent>
                 </Card>
             </div>
 
             <DeleteConfirmModal
-                open={deleteId !== null}
-                onOpenChange={(open) => !open && setDeleteId(null)}
-                onConfirm={handleDelete}
-                title="Hapus Data Training"
-                description="Apakah Anda yakin ingin menghapus data training ini? Tindakan ini tidak dapat dibatalkan."
-                isLoading={isDeleting}
-            />
-
-            <TerminalRetrainModal
-                open={showTerminal}
-                onClose={() => setShowTerminal(false)}
-                totalData={stats.total}
-                useSMOTE={useSMOTE}
+                open={Boolean(target)}
+                onOpenChange={(open) => !open && setTarget(null)}
+                onConfirm={() => {
+                    if (!target) return;
+                    router.delete(route('training-data.destroy', target.id), {
+                        onFinish: () => setTarget(null),
+                    });
+                }}
+                title="Hapus Data Rekam Medis"
+                description="Data ini akan dihapus permanen dan tidak lagi digunakan pada pelatihan model berikutnya."
             />
         </AppLayout>
     );
 }
-

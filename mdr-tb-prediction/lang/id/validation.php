@@ -1,0 +1,62 @@
+<?php
+
+return [
+    'required' => 'Kolom :attribute wajib diisi.',
+    'string' => 'Kolom :attribute harus berupa teks.',
+    'integer' => 'Kolom :attribute harus berupa angka bulat.',
+    'numeric' => 'Kolom :attribute harus berupa angka.',
+    'email' => 'Kolom :attribute harus berupa alamat email yang valid.',
+    'lowercase' => 'Kolom :attribute harus ditulis dengan huruf kecil.',
+    'unique' => ':attribute sudah terdaftar.',
+    'confirmed' => 'Konfirmasi :attribute tidak cocok.',
+    'in' => 'Pilihan :attribute tidak valid.',
+    'current_password' => 'Kata sandi saat ini tidak sesuai.',
+    'min' => [
+        'numeric' => 'Kolom :attribute minimal :min.',
+        'string' => 'Kolom :attribute minimal :min karakter.',
+    ],
+    'max' => [
+        'numeric' => 'Kolom :attribute maksimal :max.',
+        'string' => 'Kolom :attribute maksimal :max karakter.',
+    ],
+    'password' => [
+        'letters' => 'Kata sandi harus memuat setidaknya satu huruf.',
+        'mixed' => 'Kata sandi harus memuat huruf besar dan huruf kecil.',
+        'numbers' => 'Kata sandi harus memuat setidaknya satu angka.',
+        'symbols' => 'Kata sandi harus memuat setidaknya satu simbol.',
+        'uncompromised' => 'Kata sandi yang dipilih pernah terekspos kebocoran data. Gunakan kata sandi lain.',
+    ],
+
+    /*
+     * Nama variabel penelitian ditampilkan sesuai istilah pada proposal,
+     * bukan nama kolom basis data, agar pesan galat mudah dipahami operator.
+     */
+    'attributes' => [
+        'nama_lengkap' => 'Nama Lengkap',
+        'ket_usia' => 'Usia (tahun)',
+        'usia' => 'Kategori Usia',
+        'jenis_kelamin' => 'Jenis Kelamin',
+        'status_bekerja' => 'Status Bekerja',
+        'bb' => 'Berat Badan',
+        'tb' => 'Tinggi Badan',
+        'imt' => 'Indeks Massa Tubuh',
+        'status_gizi' => 'Status Gizi',
+        'status_merokok' => 'Status Merokok',
+        'pemeriksaan_kontak' => 'Pemeriksaan Kontak',
+        'riwayat_dm' => 'Riwayat Diabetes',
+        'riwayat_hiv' => 'Riwayat HIV',
+        'komorbiditas' => 'Komorbiditas Lain',
+        'kepatuhan_minum_obat' => 'Kepatuhan Minum Obat',
+        'efek_samping_obat' => 'Efek Samping Obat',
+        'keterangan_efek_samping' => 'Keterangan Efek Samping',
+        'riwayat_pengobatan' => 'Riwayat Pengobatan Sebelumnya',
+        'panduan_pengobatan' => 'Panduan Pengobatan',
+        'keberhasilan_pengobatan' => 'Keberhasilan Pengobatan',
+        'name' => 'Nama',
+        'email' => 'Email',
+        'password' => 'Kata Sandi',
+        'current_password' => 'Kata Sandi Saat Ini',
+        'role' => 'Peran',
+        'token' => 'Token',
+    ],
+];

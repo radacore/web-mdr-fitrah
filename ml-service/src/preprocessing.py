@@ -1,21 +1,39 @@
 """
-Data Preprocessing Module untuk Prediksi Keberhasilan Pengobatan MDR-TB
+Preprocessing Data untuk Klasifikasi Keberhasilan Pengobatan MDR-TB
 
-Modul ini menangani:
-- Data cleaning
-- Outlier detection menggunakan metode IQR
-- Label encoding untuk data kategorikal (Manual Mapping)
+Tahapan mengikuti Bab III.C.4 (Teknik Analisis Data) proposal:
+1. Data cleaning  : penanganan missing values, data duplikat, data tidak konsisten
+2. Feature eng.   : perhitungan IMT dari BB dan TB, penentuan kategori usia
+3. Encoding       : label encoding untuk seluruh variabel kategorikal
+(Normalisasi dilakukan di tahap training, setelah pembagian data, agar tidak
+terjadi kebocoran data. Lihat src/training.py)
+
+Seluruh 17 variabel pada Ruang Lingkup Penelitian (Bab I.E) digunakan sebagai fitur.
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, cast
 
 import joblib
-import numpy as np
 import pandas as pd
 
-# Manual Label Encoding Mappings (Hardcoded untuk konsistensi)
+# Batas usia yang memisahkan kategori usia produktif dan usia lanjut.
+# Kategori usia merupakan turunan dari usia dalam tahun, sehingga nilainya
+# dihitung ulang pada tahap feature engineering. Penurunan otomatis ini
+# menghilangkan data tidak konsisten antara kedua variabel tersebut.
+BATAS_USIA_LANJUT = 45
+
+USIA_PRODUKTIF = "Usia Produktif"
+USIA_LANJUT = "Usia Lanjut"
+
+
+def tentukan_kategori_usia(usia_tahun: float) -> str:
+    """Menentukan kategori usia berdasarkan usia pasien dalam tahun."""
+    return USIA_LANJUT if usia_tahun >= BATAS_USIA_LANJUT else USIA_PRODUKTIF
+
+
+# Label encoding manual agar pemetaan kategori konsisten antara pelatihan dan prediksi
 LABEL_ENCODINGS = {
-    "Usia": {"Usia Produktif": 0, "Usia Lanjut": 1},
+    "Usia": {USIA_PRODUKTIF: 0, USIA_LANJUT: 1},
     "Jenis Kelamin": {"Laki-Laki": 0, "Laki-laki": 0, "Perempuan": 1},
     "Status Bekerja": {"Tidak Bekerja": 0, "Bekerja": 1},
     "Status Gizi": {"Gizi Kurang": 0, "Gizi Normal": 1, "Gizi Lebih": 2},
@@ -36,20 +54,49 @@ LABEL_ENCODINGS = {
     "Keberhasilan Pengobatan": {"Berhasil": 0, "Tidak Berhasil": 1},
 }
 
-# Reverse mappings untuk decode
 LABEL_DECODINGS = {
     col: {v: k for k, v in mappings.items()}
     for col, mappings in LABEL_ENCODINGS.items()
 }
 
+# Mapping nama field snake_case (Laravel) ke nama kolom dataset
+FIELD_MAPPING = {
+    "usia": "Usia",
+    "ket_usia": "Ket.Usia",
+    "jenis_kelamin": "Jenis Kelamin",
+    "status_bekerja": "Status Bekerja",
+    "bb": "BB",
+    "tb": "TB",
+    "imt": "IMT",
+    "status_gizi": "Status Gizi",
+    "status_merokok": "Status Merokok",
+    "pemeriksaan_kontak": "Pemeriksaan Kontak",
+    "riwayat_dm": "Riwayat_DM",
+    "riwayat_hiv": "Riwayat_HIV",
+    "komorbiditas": "Komorbiditas",
+    "kepatuhan_minum_obat": "Kepatuhan Minum Obat",
+    "efek_samping_obat": "Efek Samping Obat",
+    "keterangan_efek_samping": "Keterangan Efek Samping",
+    "riwayat_pengobatan": "Riwayat Pengobatan Sebelumnya",
+    "panduan_pengobatan": "Panduan Pengobatan",
+    "keberhasilan_pengobatan": "Keberhasilan Pengobatan",
+}
+
+# Kolom teks bebas yang tidak dipakai sebagai fitur model
+NON_FEATURE_COLS = ["Efek_Samping_Obat", "Keterangan Efek Samping"]
+
 
 class DataPreprocessor:
-    """Kelas untuk melakukan preprocessing data MDR-TB"""
+    """Preprocessing dataset rekam medis pasien MDR-TB."""
 
     def __init__(self):
         self.label_encoders = LABEL_ENCODINGS
         self.label_decoders = LABEL_DECODINGS
+
+        # 4 variabel numerik
         self.numerical_cols = ["Ket.Usia", "BB", "TB", "IMT"]
+
+        # 13 variabel kategorikal
         self.categorical_cols = [
             "Usia",
             "Jenis Kelamin",
@@ -65,138 +112,125 @@ class DataPreprocessor:
             "Riwayat Pengobatan Sebelumnya",
             "Panduan Pengobatan",
         ]
+
         self.target_col = "Keberhasilan Pengobatan"
+        # Total 17 fitur sesuai Ruang Lingkup Penelitian
         self.feature_cols = self.numerical_cols + self.categorical_cols
-        # Subset fitur terpilih dari hybrid feature selection.
-        # Default = semua fitur (17) agar pkl lama tanpa attr ini tetap jalan.
-        self.selected_features: List[str] = list(self.feature_cols)
-
-    def __setstate__(self, state: Dict) -> None:
-        """Backward-compat: pkl lama tanpa attr selected_features → default ke feature_cols."""
-        self.__dict__.update(state)
-        if not hasattr(self, "selected_features"):
-            self.selected_features = list(self.feature_cols)
-
-    def set_selected_features(self, features: List[str]) -> None:
-        """Persist frozen selected subset dari hybrid feature selection. Filter ke feature_cols."""
-        self.selected_features = [f for f in features if f in self.feature_cols]
+        self.cleaning_report: Dict[str, int] = {}
 
     def load_data(self, filepath: str) -> pd.DataFrame:
-        """Load data dari file CSV"""
-        df = pd.read_csv(filepath)
-        return df
+        """Membaca dataset dari file CSV."""
+        return pd.read_csv(filepath)
+
+    def rename_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Menyesuaikan nama kolom snake_case dari basis data ke nama kolom dataset."""
+        return df.rename(columns=FIELD_MAPPING)
 
     def clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Membersihkan data:
-        - Hapus kolom yang tidak diperlukan
-        - Handle missing values
+        Data cleaning:
+        - Membuang kolom teks bebas yang tidak menjadi fitur model
+        - Membuang baris duplikat
+        - Membuang baris dengan missing value pada kolom fitur atau target
         """
         df_clean = df.copy()
+        total_awal = len(df_clean)
 
-        # Hapus kolom 'Efek_Samping_Obat' yang memiliki banyak missing values
-        if "Efek_Samping_Obat" in df_clean.columns:
-            df_clean = df_clean.drop(columns=["Efek_Samping_Obat"])
+        for col in NON_FEATURE_COLS:
+            if col in df_clean.columns:
+                df_clean = df_clean.drop(columns=[col])
 
-        # Hapus baris dengan missing values
-        df_clean = df_clean.dropna()
+        # Data duplikat
+        df_clean = df_clean.drop_duplicates()
+        dibuang_duplikat = total_awal - len(df_clean)
 
-        # Reset index
+        # Missing value pada kolom fitur/target yang tersedia
+        cek_kolom = [
+            c
+            for c in self.feature_cols + [self.target_col]
+            if c in df_clean.columns and c != "IMT"
+        ]
+        sebelum_dropna = len(df_clean)
+        df_clean = df_clean.dropna(subset=cek_kolom)
+        dibuang_missing = sebelum_dropna - len(df_clean)
+
         df_clean = df_clean.reset_index(drop=True)
+
+        self.cleaning_report = {
+            "total_awal": int(total_awal),
+            "dibuang_duplikat": int(dibuang_duplikat),
+            "dibuang_missing": int(dibuang_missing),
+            "total_akhir": int(len(df_clean)),
+        }
+        print(
+            f"Data cleaning: {total_awal} baris -> {len(df_clean)} baris "
+            f"(duplikat: {dibuang_duplikat}, missing value: {dibuang_missing})"
+        )
 
         return df_clean
 
     def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Feature Engineering:
-        - Menghitung IMT dari BB dan TB jika belum ada / perlu dihitung ulang
-          IMT = BB / (TB/100)^2
+        Menghitung variabel turunan:
+        - IMT dari BB dan TB: IMT = BB / (TB dalam meter)^2
+        - Kategori usia dari usia dalam tahun
 
-        CATATAN KONSISTENSI:
-        BB & TB di-cast ke integer (mengikuti perilaku notebook disertasi)
-        agar hasil IMT 100% bit-identical antara web (Laravel+Flask) dan notebook.
-        Laravel menyimpan BB/TB sebagai FLOAT di MySQL, namun input medis selalu
-        bilangan bulat (kg / cm), sehingga koersi ke int aman & deterministik.
+        Kolom numerik dikonversi secara eksplisit karena data yang berasal dari
+        basis data maupun berkas CSV dapat terbaca sebagai teks.
         """
         df_fe = df.copy()
 
+        if "Ket.Usia" in df_fe.columns:
+            df_fe["Ket.Usia"] = pd.to_numeric(df_fe["Ket.Usia"], errors="coerce")
+            df_fe = df_fe.dropna(subset=["Ket.Usia"]).reset_index(drop=True)
+            df_fe["Ket.Usia"] = df_fe["Ket.Usia"].astype(int)
+
+            # Kategori usia ditentukan ulang agar selalu selaras dengan usia
+            # dalam tahun, sekaligus memperbaiki data yang tidak konsisten.
+            df_fe["Usia"] = df_fe["Ket.Usia"].apply(tentukan_kategori_usia)
+
         if "BB" in df_fe.columns and "TB" in df_fe.columns:
-            # Konversi ke numeric dulu (handle string/None)
             df_fe["BB"] = pd.to_numeric(df_fe["BB"], errors="coerce")
             df_fe["TB"] = pd.to_numeric(df_fe["TB"], errors="coerce")
-            # Drop baris dengan BB/TB NaN sebelum cast ke int
             df_fe = df_fe.dropna(subset=["BB", "TB"]).reset_index(drop=True)
-            # Cast ke int untuk konsistensi dengan notebook (astype(int))
+
+            # BB dan TB pada rekam medis selalu bilangan bulat (kg dan cm)
             df_fe["BB"] = df_fe["BB"].astype(int)
             df_fe["TB"] = df_fe["TB"].astype(int)
-            # Hitung IMT: BB / (TB dalam meter)^2
+
             tb_meter = df_fe["TB"] / 100
-            df_fe["IMT"] = df_fe["BB"] / (tb_meter**2)
-            df_fe["IMT"] = df_fe["IMT"].round(2)
-            print(
-                f"Feature Engineering: IMT dihitung dari BB dan TB ({len(df_fe)} records)"
-            )
+            df_fe["IMT"] = (df_fe["BB"] / (tb_meter**2)).round(2)
 
         return df_fe
 
-    def remove_outliers(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Menghapus outliers menggunakan metode IQR
-        """
-        df_clean = df.copy()
-
-        for col in self.numerical_cols:
-            if col in df_clean.columns:
-                Q1 = df_clean[col].quantile(0.25)
-                Q3 = df_clean[col].quantile(0.75)
-                IQR = Q3 - Q1
-                lower_bound = Q1 - 1.5 * IQR
-                upper_bound = Q3 + 1.5 * IQR
-
-                df_clean = df_clean[
-                    (df_clean[col] >= lower_bound) & (df_clean[col] <= upper_bound)
-                ]
-
-        return df_clean.reset_index(drop=True)
-
-    def encode_value(self, column: str, value: str) -> int:
-        """Encode single value menggunakan manual mapping"""
-        if column in self.label_encoders:
-            mapping = self.label_encoders[column]
-            # Coba exact match dulu
-            if value in mapping:
-                return mapping[value]
-            # Coba case-insensitive match
-            value_lower = str(value).lower().strip()
-            for key, encoded in mapping.items():
-                if key.lower().strip() == value_lower:
-                    return encoded
-            # Default: return -1 jika tidak ditemukan
-            print(f"Warning: Unknown value '{value}' for column '{column}'")
+    def encode_value(self, column: str, value) -> int:
+        """Melakukan encoding satu nilai kategorikal."""
+        if column not in self.label_encoders:
             return -1
+
+        mapping = self.label_encoders[column]
+        if value in mapping:
+            return mapping[value]
+
+        value_lower = str(value).lower().strip()
+        for key, encoded in mapping.items():
+            if key.lower().strip() == value_lower:
+                return encoded
+
+        print(f"Peringatan: nilai '{value}' tidak dikenali pada kolom '{column}'")
         return -1
 
     def decode_value(self, column: str, encoded: int) -> str:
-        """Decode single value menggunakan manual mapping"""
+        """Mengembalikan label asli dari nilai hasil encoding."""
         if column in self.label_decoders:
-            mapping = self.label_decoders[column]
-            return mapping.get(encoded, "Unknown")
-        return "Unknown"
+            return self.label_decoders[column].get(encoded, "Tidak Diketahui")
+        return "Tidak Diketahui"
 
-    def encode_categorical(self, df: pd.DataFrame, fit: bool = True) -> pd.DataFrame:
-        """
-        Melakukan label encoding pada kolom kategorikal menggunakan manual mapping
-
-        Args:
-            df: DataFrame untuk diproses
-            fit: Parameter ini diabaikan karena menggunakan manual mapping
-        """
+    def encode_categorical(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Label encoding pada seluruh kolom kategorikal dan kolom target."""
         df_encoded = df.copy()
 
-        # Encode semua kolom kategorikal + target
-        cols_to_encode = self.categorical_cols + [self.target_col]
-
-        for col in cols_to_encode:
+        for col in self.categorical_cols + [self.target_col]:
             if col in df_encoded.columns:
                 df_encoded[col] = df_encoded[col].apply(
                     lambda x: self.encode_value(col, str(x))
@@ -204,135 +238,87 @@ class DataPreprocessor:
 
         return df_encoded
 
-    def preprocess(self, df: pd.DataFrame, fit: bool = True) -> pd.DataFrame:
+    def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Pipeline preprocessing lengkap:
-        1. Cleaning Data
-        2. Feature Engineering (hitung IMT)
-        3. Outlier Detection (IQR)
-        4. Label Encoding
+        Pipeline preprocessing:
+        1. Penyesuaian nama kolom
+        2. Data cleaning
+        3. Feature engineering (IMT)
+        4. Label encoding
         """
-        df_processed = self.clean_data(df)
+        df_processed = self.rename_columns(df)
+        df_processed = self.clean_data(df_processed)
         df_processed = self.feature_engineering(df_processed)
-        df_processed = self.remove_outliers(df_processed)
-        df_processed = self.encode_categorical(df_processed, fit=fit)
+        df_processed = self.encode_categorical(df_processed)
         return df_processed
 
     def get_features_and_target(
         self, df: pd.DataFrame
     ) -> Tuple[pd.DataFrame, pd.Series]:
-        """
-        Memisahkan features dan target dari DataFrame
-        """
-        # Pilih hanya kolom fitur terpilih (default = semua) yang ada di dataset
-        source_cols = self.selected_features if self.selected_features else self.feature_cols
-        available_features = [col for col in source_cols if col in df.columns]
-        X = df[available_features]
-        y = df[self.target_col]
+        """Memisahkan matriks fitur (X) dan vektor target (y)."""
+        available: List[str] = [c for c in self.feature_cols if c in df.columns]
+        X = cast(pd.DataFrame, df[available])
+        y = cast(pd.Series, df[self.target_col])
         return X, y
 
     def preprocess_single_input(self, input_data: Dict) -> pd.DataFrame:
-        """
-        Preprocess satu input data untuk prediksi.
-        Termasuk Feature Engineering: menghitung IMT dari BB dan TB.
-        """
-        # Mapping dari snake_case (frontend) ke format asli
-        field_mapping = {
-            "usia": "Usia",
-            "ket_usia": "Ket.Usia",
-            "jenis_kelamin": "Jenis Kelamin",
-            "status_bekerja": "Status Bekerja",
-            "bb": "BB",
-            "tb": "TB",
-            "status_gizi": "Status Gizi",
-            "status_merokok": "Status Merokok",
-            "pemeriksaan_kontak": "Pemeriksaan Kontak",
-            "riwayat_dm": "Riwayat_DM",
-            "riwayat_hiv": "Riwayat_HIV",
-            "komorbiditas": "Komorbiditas",
-            "kepatuhan_minum_obat": "Kepatuhan Minum Obat",
-            "efek_samping_obat": "Efek Samping Obat",
-            "riwayat_pengobatan": "Riwayat Pengobatan Sebelumnya",
-            "panduan_pengobatan": "Panduan Pengobatan",
-        }
+        """Preprocessing satu baris data pasien untuk keperluan prediksi."""
+        encoded: Dict[str, float] = {}
 
-        # Convert input keys dan encode
-        encoded_data = {}
         for key, value in input_data.items():
-            mapped_key = field_mapping.get(key, key)
+            col = FIELD_MAPPING.get(key, key)
 
-            # Konversi numerik
-            if mapped_key in ["Ket.Usia", "BB", "TB"]:
+            if col in NON_FEATURE_COLS or col == self.target_col:
+                continue
+
+            if col in ("Ket.Usia", "BB", "TB"):
                 try:
-                    encoded_data[mapped_key] = float(value)
-                except (ValueError, TypeError):
-                    encoded_data[mapped_key] = 0
-            # Encode kategorikal
-            elif mapped_key in self.label_encoders:
+                    encoded[col] = float(value)
+                except (TypeError, ValueError):
+                    encoded[col] = 0.0
+            elif col in self.label_encoders:
+                # Nilai bisa datang sebagai label teks atau kode numerik
                 if isinstance(value, int) or (
                     isinstance(value, str) and value.isdigit()
                 ):
-                    int_val = int(value)
-                    if int_val in self.label_encoders[mapped_key].values():
-                        encoded_data[mapped_key] = int_val
-                    else:
-                        encoded_data[mapped_key] = self.encode_value(
-                            mapped_key, str(value)
-                        )
+                    kode = int(value)
+                    encoded[col] = (
+                        kode
+                        if kode in self.label_encoders[col].values()
+                        else self.encode_value(col, str(value))
+                    )
                 else:
-                    encoded_data[mapped_key] = self.encode_value(mapped_key, str(value))
-            else:
-                encoded_data[mapped_key] = value
+                    encoded[col] = self.encode_value(col, str(value))
 
-        # Feature Engineering: Hitung IMT dari BB dan TB
-        if "BB" in encoded_data and "TB" in encoded_data:
-            bb = encoded_data["BB"]
-            tb = encoded_data["TB"]
-            if tb > 0:
-                tb_meter = tb / 100
-                encoded_data["IMT"] = round(bb / (tb_meter**2), 2)
-            else:
-                encoded_data["IMT"] = 0
-            print(
-                f"Feature Engineering: IMT = {encoded_data['IMT']} (BB={bb}, TB={tb})"
+        # Variabel turunan dihitung ulang agar konsisten dengan data latih
+        bb = encoded.get("BB", 0)
+        tb = encoded.get("TB", 0)
+        encoded["IMT"] = round(bb / ((tb / 100) ** 2), 2) if tb > 0 else 0.0
+
+        if "Ket.Usia" in encoded:
+            encoded["Usia"] = self.encode_value(
+                "Usia", tentukan_kategori_usia(encoded["Ket.Usia"])
             )
 
-        df = pd.DataFrame([encoded_data])
+        df = pd.DataFrame([encoded])
+        available = [c for c in self.feature_cols if c in df.columns]
+        return cast(pd.DataFrame, df[available])
 
-        # Pilih hanya kolom fitur terpilih (default = semua) yang tersedia di input
-        source_cols = self.selected_features if self.selected_features else self.feature_cols
-        available_features = [col for col in source_cols if col in df.columns]
-        return df[available_features]
-
-    def save(self, filepath: str):
-        """Simpan preprocessor ke file"""
+    def save(self, filepath: str) -> None:
         joblib.dump(self, filepath)
 
     @staticmethod
     def load(filepath: str) -> "DataPreprocessor":
-        """Load preprocessor dari file"""
         return joblib.load(filepath)
 
 
 if __name__ == "__main__":
-    # Test encoding
     preprocessor = DataPreprocessor()
+    df = preprocessor.load_data("../data/data_uji_ml.csv")
+    processed = preprocessor.preprocess(df)
+    X, y = preprocessor.get_features_and_target(processed)
 
-    print("=== Manual Label Encoding Mappings ===")
-    for col, mapping in LABEL_ENCODINGS.items():
-        print(f"\n{col}:")
-        for value, encoded in mapping.items():
-            print(f"  {value} -> {encoded}")
-
-    # Test single encoding
-    print("\n=== Test Single Encoding ===")
-    test_cases = [
-        ("Usia", "Usia Produktif"),
-        ("Jenis Kelamin", "Laki-Laki"),
-        ("Status Gizi", "Gizi Normal"),
-        ("Keberhasilan Pengobatan", "Berhasil"),
-    ]
-    for col, value in test_cases:
-        encoded = preprocessor.encode_value(col, value)
-        decoded = preprocessor.decode_value(col, encoded)
-        print(f"{col}: '{value}' -> {encoded} -> '{decoded}'")
+    print(f"\nJumlah fitur : {X.shape[1]}")
+    print(f"Jumlah sampel: {X.shape[0]}")
+    print(f"Daftar fitur : {list(X.columns)}")
+    print(f"\nDistribusi kelas:\n{y.value_counts().rename(index=LABEL_DECODINGS[preprocessor.target_col])}")

@@ -1,19 +1,30 @@
-import ApplicationLogo from '@/ShadcnComponents/ApplicationLogo';
+import { Card, CardContent } from '@/ShadcnComponents/ui/card';
 import { Link } from '@inertiajs/react';
+import { Activity } from 'lucide-react';
 import { PropsWithChildren } from 'react';
 
-export default function Guest({ children }: PropsWithChildren) {
+/** Kerangka halaman untuk pengguna yang belum terautentikasi. */
+export default function GuestLayout({ children }: PropsWithChildren) {
     return (
-        <div className="flex min-h-screen flex-col items-center bg-gray-100 pt-6 sm:justify-center sm:pt-0">
-            <div>
-                <Link href="/">
-                    <ApplicationLogo className="h-20 w-20 fill-current text-gray-500" />
-                </Link>
-            </div>
+        <div className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-10">
+            <Link
+                href={route('login')}
+                className="mb-6 flex items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+                <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                    <Activity className="size-5" />
+                </div>
+                <div className="text-left">
+                    <p className="font-semibold leading-tight">Klasifikasi MDR-TB</p>
+                    <p className="text-xs text-muted-foreground">
+                        SMOTE &amp; Random Forest
+                    </p>
+                </div>
+            </Link>
 
-            <div className="mt-6 w-full overflow-hidden bg-white px-6 py-4 shadow-md sm:max-w-md sm:rounded-lg">
-                {children}
-            </div>
+            <Card className="w-full max-w-md">
+                <CardContent className="pt-6">{children}</CardContent>
+            </Card>
         </div>
     );
 }
