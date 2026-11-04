@@ -44,6 +44,8 @@ class PredictionController extends Controller
      *
      * Kategori usia dan IMT tidak diminta dari pengguna karena merupakan
      * variabel turunan yang dihitung dari usia, berat, dan tinggi badan.
+     * Tanggal awal pengobatan juga bukan masukan model: nilainya dipakai untuk
+     * menurunkan durasi dan status pengobatan pada tampilan.
      */
     public function predict(Request $request): RedirectResponse|Response
     {
@@ -65,10 +67,18 @@ class PredictionController extends Controller
             'keterangan_efek_samping' => 'nullable|string',
             'riwayat_pengobatan' => ['required', 'string', TrainingData::aturanKategorik('riwayat_pengobatan')],
             'panduan_pengobatan' => ['required', 'string', TrainingData::aturanKategorik('panduan_pengobatan')],
+            'tanggal_awal_pengobatan' => ['required', 'date', 'before_or_equal:'.TrainingData::hariIni()],
         ]);
 
         $validated['usia'] = TrainingData::kategoriUsia($validated['ket_usia']);
         $validated['imt'] = TrainingData::hitungImt($validated['bb'], $validated['tb']);
+
+        // Durasi dan status disimpan sebagai potret kondisi saat klasifikasi,
+        // sehingga riwayat tidak berubah seiring berjalannya waktu.
+        $validated = array_merge(
+            $validated,
+            TrainingData::ringkasanPengobatan($validated['tanggal_awal_pengobatan']),
+        );
 
         try {
             $result = $this->ml->predict($validated);

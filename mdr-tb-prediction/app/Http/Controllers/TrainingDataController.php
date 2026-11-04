@@ -41,6 +41,7 @@ class TrainingDataController extends Controller
             'keterangan_efek_samping' => 'nullable|string',
             'riwayat_pengobatan' => ['required', 'string', TrainingData::aturanKategorik('riwayat_pengobatan')],
             'panduan_pengobatan' => ['required', 'string', TrainingData::aturanKategorik('panduan_pengobatan')],
+            'tanggal_awal_pengobatan' => ['nullable', 'date', 'before_or_equal:'.TrainingData::hariIni()],
             'keberhasilan_pengobatan' => ['required', 'string', TrainingData::aturanKategorik('keberhasilan_pengobatan')],
         ];
     }

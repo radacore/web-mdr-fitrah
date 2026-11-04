@@ -7,13 +7,25 @@ import {
     CardHeader,
     CardTitle,
 } from '@/ShadcnComponents/ui/card';
-import { KELOMPOK_VARIABEL, LABEL } from '@/lib/variabel';
+import {
+    KELOMPOK_VARIABEL,
+    LABEL,
+    formatTanggal,
+    hitungDurasiPengobatan,
+    tentukanStatusPengobatan,
+} from '@/lib/variabel';
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { TrainingDataRecord } from './Partials/TrainingDataForm';
 
 export default function Show({ trainingData }: { trainingData: TrainingDataRecord }) {
     const berhasil = trainingData.keberhasilan_pengobatan === 'Berhasil';
+    const durasi = hitungDurasiPengobatan(
+        trainingData.tanggal_awal_pengobatan ?? '',
+    );
+    const statusPengobatan = trainingData.tanggal_awal_pengobatan
+        ? tentukanStatusPengobatan(durasi.bulan)
+        : '-';
 
     return (
         <AppLayout
@@ -109,6 +121,37 @@ export default function Show({ trainingData }: { trainingData: TrainingDataRecor
                                             {trainingData.imt}
                                         </dd>
                                     </div>
+                                )}
+
+                                {kelompok.judul === 'Data Pengobatan' && (
+                                    <>
+                                        <div className="flex items-baseline justify-between gap-3 border-b pb-2">
+                                            <dt className="text-sm text-muted-foreground">
+                                                {LABEL.tanggal_awal_pengobatan}
+                                            </dt>
+                                            <dd className="text-right text-sm font-medium">
+                                                {formatTanggal(
+                                                    trainingData.tanggal_awal_pengobatan,
+                                                )}
+                                            </dd>
+                                        </div>
+                                        <div className="flex items-baseline justify-between gap-3 border-b pb-2">
+                                            <dt className="text-sm text-muted-foreground">
+                                                {LABEL.durasi_pengobatan}
+                                            </dt>
+                                            <dd className="text-right text-sm font-medium tabular-nums">
+                                                {durasi.label || '-'}
+                                            </dd>
+                                        </div>
+                                        <div className="flex items-baseline justify-between gap-3 border-b pb-2">
+                                            <dt className="text-sm text-muted-foreground">
+                                                {LABEL.status_pengobatan}
+                                            </dt>
+                                            <dd className="text-right text-sm font-medium">
+                                                {statusPengobatan}
+                                            </dd>
+                                        </div>
+                                    </>
                                 )}
                             </dl>
 

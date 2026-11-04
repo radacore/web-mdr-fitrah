@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/ShadcnComponents/ui/card';
 import { cn } from '@/lib/utils';
-import { LABEL } from '@/lib/variabel';
+import { LABEL, formatTanggal } from '@/lib/variabel';
 import { CheckCircle2, TriangleAlert } from 'lucide-react';
 
 interface HasilProps {
@@ -192,6 +192,48 @@ export function DataPasien({ data, imt }: DataPasienProps) {
                         </div>
                     )}
                 </dl>
+
+                {(data.tanggal_awal_pengobatan || data.durasi_pengobatan) && (
+                    <div className="mt-4 rounded-md border bg-muted/40 px-3 py-2">
+                        <p className="text-xs font-medium text-muted-foreground">
+                            Informasi Pengobatan
+                        </p>
+                        <dl className="mt-1 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+                            <div>
+                                <dt className="text-xs text-muted-foreground">
+                                    {LABEL.tanggal_awal_pengobatan}
+                                </dt>
+                                <dd className="font-medium">
+                                    {formatTanggal(
+                                        data.tanggal_awal_pengobatan as
+                                            | string
+                                            | null
+                                            | undefined,
+                                    )}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-xs text-muted-foreground">
+                                    {LABEL.durasi_pengobatan}
+                                </dt>
+                                <dd className="font-medium tabular-nums">
+                                    {data.durasi_pengobatan || '-'}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-xs text-muted-foreground">
+                                    {LABEL.status_pengobatan}
+                                </dt>
+                                <dd className="font-medium">
+                                    {data.status_pengobatan || '-'}
+                                </dd>
+                            </div>
+                        </dl>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                            Informasi turunan, tidak digunakan sebagai variabel model.
+                        </p>
+                    </div>
+                )}
 
                 {data.keterangan_efek_samping && (
                     <div className="mt-4 rounded-md border bg-muted/40 px-3 py-2">

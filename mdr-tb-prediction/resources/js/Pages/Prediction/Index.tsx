@@ -13,16 +13,20 @@ import { Input } from '@/ShadcnComponents/ui/input';
 import { Textarea } from '@/ShadcnComponents/ui/textarea';
 import { VariabelTurunan } from '@/ShadcnComponents/VariabelTurunan';
 import {
+    BATAS_BULAN_PENGOBATAN_LAMA,
     BATAS_USIA_LANJUT,
     KELOMPOK_VARIABEL,
     LABEL,
     OPSI,
+    hitungDurasiPengobatan,
     hitungImt,
+    tanggalHariIni,
     tentukanKategoriUsia,
+    tentukanStatusPengobatan,
 } from '@/lib/variabel';
 import { Head, useForm } from '@inertiajs/react';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 
 interface PredictionForm {
     nama_lengkap: string;
@@ -42,6 +46,7 @@ interface PredictionForm {
     keterangan_efek_samping: string;
     riwayat_pengobatan: string;
     panduan_pengobatan: string;
+    tanggal_awal_pengobatan: string;
     [key: string]: string;
 }
 
@@ -68,6 +73,7 @@ const NILAI_AWAL: PredictionForm = {
     keterangan_efek_samping: '',
     riwayat_pengobatan: '',
     panduan_pengobatan: '',
+    tanggal_awal_pengobatan: '',
 };
 
 /** Variabel numerik ditampilkan sebagai input angka, sisanya sebagai pilihan. */
@@ -82,6 +88,16 @@ export default function Index({ features, mlServiceStatus }: Props) {
         () => tentukanKategoriUsia(data.ket_usia),
         [data.ket_usia],
     );
+
+    // Durasi dan status pengobatan merupakan variabel turunan tampilan,
+    // dihitung dari tanggal awal pengobatan dan tidak dikirim ke model.
+    const durasi = useMemo(
+        () => hitungDurasiPengobatan(data.tanggal_awal_pengobatan),
+        [data.tanggal_awal_pengobatan],
+    );
+    const statusPengobatan = data.tanggal_awal_pengobatan
+        ? tentukanStatusPengobatan(durasi.bulan)
+        : '';
 
     const terisi = useMemo(() => {
         const wajib = Object.keys(NILAI_AWAL).filter(
@@ -170,40 +186,84 @@ export default function Index({ features, mlServiceStatus }: Props) {
                                 </p>
                             </CardHeader>
                             <CardContent className="grid gap-4 sm:grid-cols-2">
-                                {kelompok.fields.map((nama) =>
-                                    VARIABEL_NUMERIK.includes(nama) ? (
-                                        <Field
-                                            key={nama}
-                                            id={nama}
-                                            label={LABEL[nama]}
-                                            error={errors[nama]}
-                                            required
-                                        >
-                                            <Input
+                                {kelompok.fields.map((nama) => (
+                                    <Fragment key={nama}>
+                                        {kelompok.judul === 'Data Pengobatan' &&
+                                            nama === 'riwayat_pengobatan' && (
+                                                <Field
+                                                    id="tanggal_awal_pengobatan"
+                                                    label={LABEL.tanggal_awal_pengobatan}
+                                                    error={errors.tanggal_awal_pengobatan}
+                                                    hint="Dipakai untuk menghitung durasi dan status pengobatan."
+                                                    required
+                                                >
+                                                    <Input
+                                                        id="tanggal_awal_pengobatan"
+                                                        type="date"
+                                                        max={tanggalHariIni()}
+                                                        value={data.tanggal_awal_pengobatan}
+                                                        onChange={(e) =>
+                                                            setData(
+                                                                'tanggal_awal_pengobatan',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        aria-invalid={Boolean(
+                                                            errors.tanggal_awal_pengobatan,
+                                                        )}
+                                                    />
+                                                </Field>
+                                            )}
+
+                                        {VARIABEL_NUMERIK.includes(nama) ? (
+                                            <Field
                                                 id={nama}
-                                                type="number"
-                                                inputMode="numeric"
-                                                min={nama === 'tb' ? 50 : 1}
-                                                max={nama === 'ket_usia' ? 120 : undefined}
+                                                label={LABEL[nama]}
+                                                error={errors[nama]}
+                                                required
+                                            >
+                                                <Input
+                                                    id={nama}
+                                                    type="number"
+                                                    inputMode="numeric"
+                                                    min={nama === 'tb' ? 50 : 1}
+                                                    max={nama === 'ket_usia' ? 120 : undefined}
+                                                    value={data[nama]}
+                                                    onChange={(e) =>
+                                                        setData(nama, e.target.value)
+                                                    }
+                                                    aria-invalid={Boolean(errors[nama])}
+                                                />
+                                            </Field>
+                                        ) : (
+                                            <SelectField
+                                                id={nama}
+                                                label={LABEL[nama]}
                                                 value={data[nama]}
-                                                onChange={(e) =>
-                                                    setData(nama, e.target.value)
-                                                }
-                                                aria-invalid={Boolean(errors[nama])}
+                                                options={OPSI[nama as keyof typeof OPSI]}
+                                                onChange={(nilai) => setData(nama, nilai)}
+                                                error={errors[nama]}
+                                                required
                                             />
-                                        </Field>
-                                    ) : (
-                                        <SelectField
-                                            key={nama}
-                                            id={nama}
-                                            label={LABEL[nama]}
-                                            value={data[nama]}
-                                            options={OPSI[nama as keyof typeof OPSI]}
-                                            onChange={(nilai) => setData(nama, nilai)}
-                                            error={errors[nama]}
-                                            required
+                                        )}
+                                    </Fragment>
+                                ))}
+
+                                {kelompok.judul === 'Data Pengobatan' && (
+                                    <>
+                                        <VariabelTurunan
+                                            compact
+                                            label={LABEL.status_pengobatan}
+                                            nilai={statusPengobatan}
+                                            keterangan={`Ditentukan dari durasi: ${BATAS_BULAN_PENGOBATAN_LAMA} bulan atau lebih tergolong pengobatan lama.`}
                                         />
-                                    ),
+                                        <VariabelTurunan
+                                            compact
+                                            label={LABEL.durasi_pengobatan}
+                                            nilai={durasi.label}
+                                            keterangan="Dihitung dari tanggal awal pengobatan sampai hari ini."
+                                        />
+                                    </>
                                 )}
 
                                 {kelompok.judul === 'Data Demografis' && (

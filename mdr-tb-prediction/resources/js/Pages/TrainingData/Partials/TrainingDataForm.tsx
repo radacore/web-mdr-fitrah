@@ -11,16 +11,20 @@ import { Input } from '@/ShadcnComponents/ui/input';
 import { Textarea } from '@/ShadcnComponents/ui/textarea';
 import { VariabelTurunan } from '@/ShadcnComponents/VariabelTurunan';
 import {
+    BATAS_BULAN_PENGOBATAN_LAMA,
     BATAS_USIA_LANJUT,
     KELOMPOK_VARIABEL,
     LABEL,
     OPSI,
+    hitungDurasiPengobatan,
     hitungImt,
+    tanggalHariIni,
     tentukanKategoriUsia,
+    tentukanStatusPengobatan,
 } from '@/lib/variabel';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 
 export interface TrainingDataRecord {
     id: number;
@@ -42,6 +46,7 @@ export interface TrainingDataRecord {
     keterangan_efek_samping: string | null;
     riwayat_pengobatan: string;
     panduan_pengobatan: string;
+    tanggal_awal_pengobatan: string | null;
     keberhasilan_pengobatan: string;
 }
 
@@ -62,6 +67,7 @@ interface FormData {
     keterangan_efek_samping: string;
     riwayat_pengobatan: string;
     panduan_pengobatan: string;
+    tanggal_awal_pengobatan: string;
     keberhasilan_pengobatan: string;
     [key: string]: string;
 }
@@ -88,6 +94,8 @@ export function TrainingDataForm({ record }: { record?: TrainingDataRecord }) {
         keterangan_efek_samping: record?.keterangan_efek_samping ?? '',
         riwayat_pengobatan: record?.riwayat_pengobatan ?? '',
         panduan_pengobatan: record?.panduan_pengobatan ?? '',
+        tanggal_awal_pengobatan:
+            record?.tanggal_awal_pengobatan?.slice(0, 10) ?? '',
         keberhasilan_pengobatan: record?.keberhasilan_pengobatan ?? '',
     });
 
@@ -96,6 +104,14 @@ export function TrainingDataForm({ record }: { record?: TrainingDataRecord }) {
         () => tentukanKategoriUsia(data.ket_usia),
         [data.ket_usia],
     );
+
+    const durasi = useMemo(
+        () => hitungDurasiPengobatan(data.tanggal_awal_pengobatan),
+        [data.tanggal_awal_pengobatan],
+    );
+    const statusPengobatan = data.tanggal_awal_pengobatan
+        ? tentukanStatusPengobatan(durasi.bulan)
+        : '';
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -146,40 +162,83 @@ export function TrainingDataForm({ record }: { record?: TrainingDataRecord }) {
                                 </p>
                             </CardHeader>
                             <CardContent className="grid gap-4 sm:grid-cols-2">
-                                {kelompok.fields.map((nama) =>
-                                    VARIABEL_NUMERIK.includes(nama) ? (
-                                        <Field
-                                            key={nama}
-                                            id={nama}
-                                            label={LABEL[nama]}
-                                            error={errors[nama]}
-                                            required
-                                        >
-                                            <Input
+                                {kelompok.fields.map((nama) => (
+                                    <Fragment key={nama}>
+                                        {kelompok.judul === 'Data Pengobatan' &&
+                                            nama === 'riwayat_pengobatan' && (
+                                                <Field
+                                                    id="tanggal_awal_pengobatan"
+                                                    label={LABEL.tanggal_awal_pengobatan}
+                                                    error={errors.tanggal_awal_pengobatan}
+                                                    hint="Opsional untuk data lama. Dipakai menghitung durasi dan status pengobatan."
+                                                >
+                                                    <Input
+                                                        id="tanggal_awal_pengobatan"
+                                                        type="date"
+                                                        max={tanggalHariIni()}
+                                                        value={data.tanggal_awal_pengobatan}
+                                                        onChange={(e) =>
+                                                            setData(
+                                                                'tanggal_awal_pengobatan',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        aria-invalid={Boolean(
+                                                            errors.tanggal_awal_pengobatan,
+                                                        )}
+                                                    />
+                                                </Field>
+                                            )}
+
+                                        {VARIABEL_NUMERIK.includes(nama) ? (
+                                            <Field
                                                 id={nama}
-                                                type="number"
-                                                inputMode="numeric"
-                                                min={nama === 'tb' ? 50 : 1}
-                                                max={nama === 'ket_usia' ? 120 : undefined}
+                                                label={LABEL[nama]}
+                                                error={errors[nama]}
+                                                required
+                                            >
+                                                <Input
+                                                    id={nama}
+                                                    type="number"
+                                                    inputMode="numeric"
+                                                    min={nama === 'tb' ? 50 : 1}
+                                                    max={nama === 'ket_usia' ? 120 : undefined}
+                                                    value={data[nama]}
+                                                    onChange={(e) =>
+                                                        setData(nama, e.target.value)
+                                                    }
+                                                    aria-invalid={Boolean(errors[nama])}
+                                                />
+                                            </Field>
+                                        ) : (
+                                            <SelectField
+                                                id={nama}
+                                                label={LABEL[nama]}
                                                 value={data[nama]}
-                                                onChange={(e) =>
-                                                    setData(nama, e.target.value)
-                                                }
-                                                aria-invalid={Boolean(errors[nama])}
+                                                options={OPSI[nama as keyof typeof OPSI]}
+                                                onChange={(nilai) => setData(nama, nilai)}
+                                                error={errors[nama]}
+                                                required
                                             />
-                                        </Field>
-                                    ) : (
-                                        <SelectField
-                                            key={nama}
-                                            id={nama}
-                                            label={LABEL[nama]}
-                                            value={data[nama]}
-                                            options={OPSI[nama as keyof typeof OPSI]}
-                                            onChange={(nilai) => setData(nama, nilai)}
-                                            error={errors[nama]}
-                                            required
+                                        )}
+                                    </Fragment>
+                                ))}
+
+                                {kelompok.judul === 'Data Pengobatan' && (
+                                    <>
+                                        <VariabelTurunan
+                                            compact
+                                            label={LABEL.status_pengobatan}
+                                            nilai={statusPengobatan}
+                                            keterangan={`Ditentukan dari durasi: ${BATAS_BULAN_PENGOBATAN_LAMA} bulan atau lebih tergolong pengobatan lama.`}
                                         />
-                                    ),
+                                        <VariabelTurunan
+                                            compact
+                                            label={LABEL.durasi_pengobatan}
+                                            nilai={durasi.label}
+                                            keterangan="Dihitung dari tanggal awal pengobatan sampai hari ini."
+                                        />
+                                    </>
                                 )}
 
                                 {kelompok.judul === 'Data Demografis' && (

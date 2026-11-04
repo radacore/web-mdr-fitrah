@@ -39,6 +39,17 @@ Dua variabel di antaranya bersifat **turunan** dan dihitung sistem, bukan diisi 
 
 Perhitungan otomatis ini menjaga kedua variabel selalu selaras dengan data pasien, sehingga tidak dapat terjadi pencatatan yang bertentangan seperti pasien berusia 48 tahun yang tercatat sebagai usia produktif.
 
+### Informasi Pengobatan
+
+Formulir klasifikasi juga meminta **tanggal awal pengobatan**. Tanggal ini bukan variabel model — model tetap memakai 17 variabel penelitian — melainkan metadata yang disimpan bersama hasil klasifikasi untuk menurunkan dua informasi tampilan:
+
+| Informasi turunan | Dihitung dari | Aturan |
+| :-- | :-- | :-- |
+| Durasi pengobatan | Tanggal awal pengobatan sampai hari ini | Bulan kalender tanpa *overflow* (31 Januari + 1 bulan = 28/29 Februari), ditambah sisa hari |
+| Status pengobatan | Durasi pengobatan | Kurang dari 6 bulan tergolong pengobatan baru, 6 bulan atau lebih tergolong pengobatan lama |
+
+Nilai durasi dan status disimpan sebagai potret saat klasifikasi dilakukan, sehingga riwayat tidak berubah seiring berjalannya waktu. Tanggal wajib diisi pada klasifikasi baru, tetapi opsional pada data rekam medis lama agar 175 baris dataset tetap dapat disunting tanpa melengkapi tanggal yang tidak tercatat. Perhitungan di server (`TrainingData::durasiPengobatan`) dan pratinjau di peramban (`resources/js/lib/variabel.ts`) memakai algoritma yang sama, dan zona waktu acuan adalah `Asia/Makassar`.
+
 Kelas `Tidak Berhasil` merupakan kelas minoritas sekaligus kelas positif pada perhitungan metrik, sehingga *recall* menjadi metrik utama: kesalahan yang paling dihindari adalah pasien berisiko gagal yang tidak terdeteksi (*false negative*).
 
 ## Alur Pemodelan
@@ -141,7 +152,7 @@ Aplikasi dapat diakses pada `http://localhost:8000`.
 | Menu | Keterangan | Akses |
 | :-- | :-- | :-- |
 | Dashboard | Ringkasan menu yang tersedia sesuai peran pengguna | Semua |
-| Klasifikasi | Formulir masukan 17 variabel, hasil klasifikasi, dan rekomendasi tindakan klinis | Semua |
+| Klasifikasi | Formulir masukan 17 variabel dan tanggal awal pengobatan, hasil klasifikasi, dan rekomendasi tindakan klinis | Semua |
 | Riwayat | Daftar hasil klasifikasi beserta detail masukan | Semua |
 | Evaluasi Model | *Confusion matrix*, metrik evaluasi, dan *feature importance* | Semua |
 | Pengujian SMOTE | Perbandingan performa model dengan dan tanpa SMOTE | Admin |

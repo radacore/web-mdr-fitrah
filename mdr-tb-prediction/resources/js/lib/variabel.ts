@@ -41,6 +41,9 @@ export const LABEL: Record<string, string> = {
     keterangan_efek_samping: 'Keterangan Efek Samping',
     riwayat_pengobatan: 'Riwayat Pengobatan Sebelumnya',
     panduan_pengobatan: 'Panduan Pengobatan',
+    tanggal_awal_pengobatan: 'Tanggal Awal Pengobatan',
+    durasi_pengobatan: 'Durasi Pengobatan',
+    status_pengobatan: 'Status Pengobatan',
     keberhasilan_pengobatan: 'Keberhasilan Pengobatan',
 };
 
@@ -117,6 +120,129 @@ export function tentukanKategoriUsia(usiaTahun: number | string): string {
     if (!usia || usia <= 0) return '';
 
     return usia >= BATAS_USIA_LANJUT ? 'Usia Lanjut' : 'Usia Produktif';
+}
+
+/**
+ * Tanggal awal pengobatan menentukan durasi dan status pengobatan. Keduanya
+ * merupakan variabel turunan tampilan, bukan masukan model: model tetap
+ * memakai 17 variabel penelitian. Perhitungan di sini hanya untuk pratinjau
+ * formulir; nilai yang disimpan dihitung ulang di server
+ * (TrainingData::durasiPengobatan) dengan algoritma yang sama.
+ */
+export const BATAS_BULAN_PENGOBATAN_LAMA = 6;
+
+export const STATUS_PENGOBATAN_BARU = 'Pengobatan Baru';
+
+export const STATUS_PENGOBATAN_LAMA = 'Pengobatan Lama';
+
+/**
+ * Zona waktu acuan layanan kesehatan, sama dengan TrainingData::ZONA_WAKTU,
+ * agar batas tanggal di peramban tidak berbeda dengan validasi server.
+ */
+export const ZONA_WAKTU = 'Asia/Makassar';
+
+/** Tanggal hari ini (YYYY-MM-DD) menurut zona waktu layanan kesehatan. */
+export function tanggalHariIni(): string {
+    const bagian = new Intl.DateTimeFormat('en-GB', {
+        timeZone: ZONA_WAKTU,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(new Date());
+
+    const ambil = (tipe: 'year' | 'month' | 'day'): string =>
+        bagian.find((item) => item.type === tipe)?.value ?? '';
+
+    return `${ambil('year')}-${ambil('month')}-${ambil('day')}`;
+}
+
+/** Menampilkan tanggal ISO (YYYY-MM-DD) dalam format Indonesia. */
+export function formatTanggal(tanggal: string | null | undefined): string {
+    if (!tanggal) return '-';
+
+    // Cast tanggal Eloquent berbentuk ISO lengkap; cukup bagian tanggal agar
+    // tidak bergeser hari karena konversi zona waktu.
+    const nilai = new Date(`${tanggal.slice(0, 10)}T00:00:00`);
+
+    if (Number.isNaN(nilai.getTime())) return '-';
+
+    return nilai.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+}
+
+/**
+ * Menambah bulan kalender tanpa overflow: 31 Januari + 1 bulan menjadi
+ * 28/29 Februari, sama seperti addMonthNoOverflow pada Carbon.
+ */
+function tambahBulan(tanggal: Date, jumlah: number): Date {
+    const hasil = new Date(tanggal.getTime());
+    const hari = hasil.getDate();
+
+    hasil.setDate(1);
+    hasil.setMonth(hasil.getMonth() + jumlah);
+
+    const akhirBulan = new Date(
+        hasil.getFullYear(),
+        hasil.getMonth() + 1,
+        0,
+    ).getDate();
+
+    hasil.setDate(Math.min(hari, akhirBulan));
+
+    return hasil;
+}
+
+function formatDurasi(bulan: number, hari: number): string {
+    const bagian: string[] = [];
+
+    if (bulan > 0) bagian.push(`${bulan} bulan`);
+    if (hari > 0) bagian.push(`${hari} hari`);
+
+    return bagian.length > 0 ? bagian.join(' ') : '0 hari';
+}
+
+export interface DurasiPengobatan {
+    bulan: number;
+    hari: number;
+    label: string;
+}
+
+export function hitungDurasiPengobatan(tanggal: string): DurasiPengobatan {
+    if (!tanggal) return { bulan: 0, hari: 0, label: '' };
+
+    // Cast tanggal Eloquent dapat berbentuk ISO lengkap; cukup bagian tanggal.
+    const mulai = new Date(`${tanggal.slice(0, 10)}T00:00:00`);
+
+    if (Number.isNaN(mulai.getTime())) {
+        return { bulan: 0, hari: 0, label: '' };
+    }
+
+    // "Hari ini" memakai zona waktu layanan kesehatan, bukan waktu peramban,
+    // agar pratinjau sama dengan perhitungan server.
+    const akhir = new Date(`${tanggalHariIni()}T00:00:00`);
+
+    if (mulai > akhir) return { bulan: 0, hari: 0, label: '' };
+
+    let bulan = 0;
+    let kursor = new Date(mulai.getTime());
+
+    while (tambahBulan(kursor, 1) <= akhir) {
+        kursor = tambahBulan(kursor, 1);
+        bulan += 1;
+    }
+
+    const hari = Math.round((akhir.getTime() - kursor.getTime()) / 86_400_000);
+
+    return { bulan, hari, label: formatDurasi(bulan, hari) };
+}
+
+export function tentukanStatusPengobatan(bulan: number): string {
+    return bulan >= BATAS_BULAN_PENGOBATAN_LAMA
+        ? STATUS_PENGOBATAN_LAMA
+        : STATUS_PENGOBATAN_BARU;
 }
 
 export function hitungImt(bb: number | string, tb: number | string): number {

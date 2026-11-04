@@ -33,7 +33,14 @@ interface Riwayat {
     prediction_result: string;
     model_used: string;
     confidence_score: number;
-    patient_data: { nama_lengkap?: string; ket_usia?: number; jenis_kelamin?: string };
+    patient_data: {
+        nama_lengkap?: string;
+        ket_usia?: number;
+        jenis_kelamin?: string;
+        tanggal_awal_pengobatan?: string | null;
+        durasi_pengobatan?: string;
+        status_pengobatan?: string;
+    };
     created_at: string;
     user?: { id: number; name: string };
 }
@@ -140,6 +147,17 @@ export default function History({ predictions, filters, isAdmin }: Props) {
                                                         ? ` · ${item.patient_data.jenis_kelamin}`
                                                         : ''}
                                                 </span>
+                                                {item.patient_data?.status_pengobatan && (
+                                                    <span className="block text-xs text-muted-foreground">
+                                                        {item.patient_data
+                                                            .durasi_pengobatan ?? '-'}{' '}
+                                                        ·{' '}
+                                                        {
+                                                            item.patient_data
+                                                                .status_pengobatan
+                                                        }
+                                                    </span>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge

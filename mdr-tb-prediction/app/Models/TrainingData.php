@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class TrainingData extends Model
 {
@@ -19,6 +20,24 @@ class TrainingData extends Model
     public const USIA_PRODUKTIF = 'Usia Produktif';
 
     public const USIA_LANJUT = 'Usia Lanjut';
+
+    /**
+     * Batas durasi yang memisahkan pengobatan baru dan pengobatan lama.
+     * Pengobatan MDR-TB berlangsung 18-24 bulan; enam bulan dipakai sebagai
+     * penanda tahap awal pengobatan telah dilalui.
+     */
+    public const BATAS_BULAN_PENGOBATAN_LAMA = 6;
+
+    public const STATUS_PENGOBATAN_BARU = 'Pengobatan Baru';
+
+    public const STATUS_PENGOBATAN_LAMA = 'Pengobatan Lama';
+
+    /**
+     * Zona waktu acuan untuk menghitung "hari ini". Penyimpanan waktu tetap
+     * memakai zona waktu aplikasi (UTC), sedangkan tanggal pengobatan diisi
+     * menurut waktu lokal layanan kesehatan.
+     */
+    public const ZONA_WAKTU = 'Asia/Makassar';
 
     /**
      * Nilai kategorikal yang diperbolehkan untuk setiap variabel.
@@ -68,6 +87,7 @@ class TrainingData extends Model
         'keterangan_efek_samping',
         'riwayat_pengobatan',
         'panduan_pengobatan',
+        'tanggal_awal_pengobatan',
         'keberhasilan_pengobatan',
     ];
 
@@ -76,6 +96,7 @@ class TrainingData extends Model
         'bb' => 'float',
         'tb' => 'float',
         'imt' => 'float',
+        'tanggal_awal_pengobatan' => 'date',
     ];
 
     /**
@@ -101,6 +122,103 @@ class TrainingData extends Model
         }
 
         return round($bb / (($tb / 100) ** 2), 2);
+    }
+
+    /**
+     * Tanggal hari ini menurut zona waktu layanan kesehatan, dipakai sebagai
+     * batas atas tanggal awal pengobatan pada validasi.
+     */
+    public static function hariIni(): string
+    {
+        return now(self::ZONA_WAKTU)->toDateString();
+    }
+
+    /**
+     * Durasi pengobatan dihitung dari tanggal awal sampai hari ini.
+     *
+     * Nilai ini merupakan variabel turunan tampilan, bukan masukan model:
+     * model tetap memakai 17 variabel penelitian. Perhitungan yang sama
+     * dilakukan di front-end (resources/js/lib/variabel.ts) untuk pratinjau
+     * langsung pada formulir.
+     *
+     * @return array{bulan: int, hari: int, label: string}
+     */
+    public static function durasiPengobatan(?string $tanggal, ?string $sampai = null): array
+    {
+        if (blank($tanggal)) {
+            return ['bulan' => 0, 'hari' => 0, 'label' => '-'];
+        }
+
+        $mulai = Carbon::parse($tanggal, self::ZONA_WAKTU)->startOfDay();
+        $akhir = Carbon::parse($sampai ?? self::hariIni(), self::ZONA_WAKTU)->startOfDay();
+
+        if ($mulai->greaterThan($akhir)) {
+            return ['bulan' => 0, 'hari' => 0, 'label' => '-'];
+        }
+
+        // Hitungan bulan mengikuti penambahan bulan kalender tanpa overflow
+        // (31 Januari + 1 bulan = 28/29 Februari), sama seperti perhitungan
+        // pratinjau di front-end.
+        $bulan = 0;
+        $kursor = $mulai->copy();
+
+        while ($kursor->copy()->addMonthNoOverflow()->lessThanOrEqualTo($akhir)) {
+            $kursor->addMonthNoOverflow();
+            $bulan++;
+        }
+
+        $hari = (int) $kursor->diffInDays($akhir);
+
+        return [
+            'bulan' => $bulan,
+            'hari' => $hari,
+            'label' => self::formatDurasi($bulan, $hari),
+        ];
+    }
+
+    /**
+     * Status pengobatan diturunkan dari durasi, bukan diisi manual, agar
+     * tidak bertentangan dengan tanggal awal pengobatan.
+     */
+    public static function statusPengobatan(int $bulan): string
+    {
+        return $bulan >= self::BATAS_BULAN_PENGOBATAN_LAMA
+            ? self::STATUS_PENGOBATAN_LAMA
+            : self::STATUS_PENGOBATAN_BARU;
+    }
+
+    /**
+     * Ringkasan pengobatan yang disimpan bersama hasil klasifikasi, sehingga
+     * riwayat tetap menampilkan kondisi saat klasifikasi dilakukan.
+     *
+     * @return array{tanggal_awal_pengobatan: string|null, durasi_pengobatan: string, status_pengobatan: string}
+     */
+    public static function ringkasanPengobatan(?string $tanggal): array
+    {
+        $durasi = self::durasiPengobatan($tanggal);
+
+        return [
+            'tanggal_awal_pengobatan' => $tanggal,
+            'durasi_pengobatan' => $durasi['label'],
+            'status_pengobatan' => $tanggal
+                ? self::statusPengobatan($durasi['bulan'])
+                : '-',
+        ];
+    }
+
+    private static function formatDurasi(int $bulan, int $hari): string
+    {
+        $bagian = [];
+
+        if ($bulan > 0) {
+            $bagian[] = $bulan.' bulan';
+        }
+
+        if ($hari > 0) {
+            $bagian[] = $hari.' hari';
+        }
+
+        return $bagian === [] ? '0 hari' : implode(' ', $bagian);
     }
 
     /**
