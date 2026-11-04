@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dokumentasi Presentasi Aplikasi</title>
+<!--
+    template.html — kerangka dokumen. Jangan menulis isi halaman di sini.
+
+    Token yang diganti oleh build.mjs:
+      - token gaya    : isi style.css (disisipkan agar hasil satu berkas portabel)
+      - token halaman : gabungan semua pages/*.html, urut nama berkas
+      - token total   : jumlah halaman
+      - token tanggal : tanggal build
+
+    Jangan menuliskan nama token secara literal di komentar, karena penggantian
+    dilakukan untuk seluruh isi berkas.
+
+    Token per halaman (nomor, total, daftar isi, gambar, caption) diisi di
+    dalam masing-masing berkas pages/*.html.
+-->
+<style>
+/* ==========================================================================
+   style.css — tata letak A4 untuk dokumen presentasi
+   Satu <section class="page"> = satu lembar A4.
+
+   Susunan satu halaman:
+     kepala (label modul + nomor)  →  judul fitur  →  area gambar
+     →  panel penjelasan (dua kolom)  →  kaki halaman
+
+   Dibagi tiga bagian:
+   1. Token & reset
+   2. Komponen halaman
+   3. Aturan cetak (@page, page-break)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Token & reset
+   -------------------------------------------------------------------------- */
+
+:root {
+    --ink: #101828;
+    --ink-soft: #344054;
+    --muted: #667085;
+    --line: #d0d5dd;
+    --line-soft: #eaecf0;
+    --tint: #f8fafc;
+    --accent: #0f766e;
+    --accent-soft: #ecfdf5;
+    --accent-line: #99f6e4;
+    --warn: #b54708;
+    --warn-soft: #fffaeb;
+    --warn-line: #fedf89;
+
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+        "Liberation Mono", monospace;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    background: #e6e8ec;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 8.7pt;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+figure,
+dl,
+dd {
+    margin: 0;
+}
+
+ul,
+ol {
+    padding-left: 4.2mm;
+}
+
+li + li {
+    margin-top: 1.1mm;
+}
+
+strong {
+    font-weight: 650;
+}
+
+code,
+.path {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    color: var(--ink);
+}
+
+/* --------------------------------------------------------------------------
+   2. Komponen halaman
+   -------------------------------------------------------------------------- */
+
+/* Lembar A4. Di layar ditampilkan seperti kertas; saat dicetak margin
+   diambil alih @page sehingga padding dinolkan. */
+.page {
+    position: relative;
+    width: 210mm;
+    height: 297mm;
+    padding: 20mm;
+    margin: 0 auto 8mm;
+    background: #fff;
+    box-shadow: 0 1mm 4mm rgba(16, 24, 40, 0.18);
+    display: flex;
+    flex-direction: column;
+    break-after: page;
+    page-break-after: always;
+}
+
+.page:last-of-type {
+    break-after: auto;
+    page-break-after: auto;
+}
+
+/* --- Kepala halaman: label modul + nomor halaman --- */
+
+.page-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6mm;
+    padding-bottom: 2mm;
+    border-bottom: 0.35mm solid var(--ink);
+    font-size: 7.6pt;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.page-head .head-module {
+    font-weight: 650;
+    color: var(--accent);
+}
+
+.page-head .head-no {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- Judul fitur --- */
+
+.page-title {
+    margin-top: 4mm;
+}
+
+.page-title h2 {
+    font-size: 18pt;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    font-weight: 700;
+}
+
+.page-title .subtitle {
+    margin-top: 1.5mm;
+    font-size: 9.4pt;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 160mm;
+}
+
+.page-title .meta {
+    margin-top: 2.5mm;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5mm 2mm;
+}
+
+.tag {
+    display: inline-block;
+    padding: 0.6mm 2mm;
+    border: 0.25mm solid var(--line);
+    border-radius: 999px;
+    background: var(--tint);
+    font-size: 7.4pt;
+    color: var(--ink-soft);
+}
+
+.tag--accent {
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+/* --- Area gambar / screenshot --- */
+
+.shot {
+    margin-top: 3.5mm;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.shot-frame {
+    position: relative;
+    width: 100%;
+    /* Rasio mengikuti tinggi tangkapan layar (lihat `rasio` di konten.mjs):
+       1440 x 810 = 16:9, 1440 x 900 = 16:10, 1440 x 1080 = 4:3. */
+    aspect-ratio: var(--shot-ratio, 16 / 9);
+    border: 0.3mm solid var(--line);
+    border-radius: 2mm;
+    background: var(--tint);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Gambar asli: pas di dalam bingkai tanpa terpotong dan tanpa distorsi. */
+.shot-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+}
+
+/* Ruang kosong sebelum screenshot ditempel. */
+.shot-placeholder {
+    padding: 8mm;
+    text-align: center;
+    color: var(--muted);
+}
+
+.shot-placeholder .ph-icon {
+    width: 11mm;
+    height: 11mm;
+    margin: 0 auto 2.5mm;
+    border: 0.4mm dashed var(--line);
+    border-radius: 2mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12pt;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.shot-placeholder .ph-title {
+    font-size: 9.4pt;
+    font-weight: 650;
+    color: var(--ink-soft);
+}
+
+.shot-placeholder .ph-hint {
+    margin-top: 1.5mm;
+    font-size: 8pt;
+    line-height: 1.45;
+}
+
+.shot-placeholder .ph-hint code {
+    background: #fff;
+    padding: 0.2mm 1mm;
+    border: 0.2mm solid var(--line);
+    border-radius: 0.8mm;
+}
+
+.shot figcaption {
+    margin-top: 1.8mm;
+    font-size: 8pt;
+    color: var(--muted);
+    display: flex;
+    gap: 2mm;
+    align-items: baseline;
+}
+
+.shot figcaption .fig-no {
+    font-weight: 650;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+
+/* --- Panel penjelasan (lebar penuh, isi dua kolom) --- */
+
+.panel {
+    margin-top: 3.5mm;
+    flex: 0 0 auto;
+    border: 0.25mm solid var(--line-soft);
+    border-radius: 1.6mm;
+    padding: 3.2mm 4mm 3.6mm;
+    background: #fff;
+    font-size: 8.2pt;
+    line-height: 1.42;
+}
+
+.panel-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2mm;
+    padding-bottom: 1.6mm;
+    margin-bottom: 2.6mm;
+    border-bottom: 0.25mm solid var(--line-soft);
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+
+.panel-title .panel-note {
+    font-size: 7.2pt;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--muted);
+}
+
+/* Dua kolom isi penjelasan. */
+.explain {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5mm;
+    align-items: start;
+}
+
+.explain .col {
+    display: flex;
+    flex-direction: column;
+    gap: 2.6mm;
+}
+
+.panel h4 {
+    margin-bottom: 1mm;
+    font-size: 8.6pt;
+    font-weight: 650;
+    color: var(--ink);
+}
+
+.panel p {
+    color: var(--ink-soft);
+}
+
+.panel p + p {
+    margin-top: 1.4mm;
+}
+
+.panel ul {
+    color: var(--ink-soft);
+    padding-left: 3.8mm;
+}
+
+.panel ul li::marker {
+    color: var(--accent);
+}
+
+/* Sorotan satu kalimat kunci di dalam panel. */
+.highlight {
+    margin-top: 0.6mm;
+    padding: 2mm 2.6mm;
+    border-left: 0.8mm solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 1.2mm 1.2mm 0;
+    font-size: 8.2pt;
+    color: var(--ink);
+}
+
+.highlight strong {
+    color: var(--accent);
+}
+
+/* --- Kaki halaman --- */
+
+.page-foot {
+    margin-top: auto;
+    padding-top: 2.5mm;
+    border-top: 0.25mm solid var(--line-soft);
+    display: flex;
+    justify-content: space-between;
+    gap: 6mm;
+    font-size: 7.2pt;
+    color: var(--muted);
+}
+
+/* --------------------------------------------------------------------------
+   Halaman sampul
+   -------------------------------------------------------------------------- */
+
+.cover {
+    justify-content: space-between;
+}
+
+.cover .cover-kicker {
+    font-size: 8pt;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.cover h1 {
+    margin-top: 4mm;
+    font-size: 27pt;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+}
+
+.cover .cover-sub {
+    margin-top: 4mm;
+    font-size: 11pt;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 140mm;
+}
+
+.cover .cover-rule {
+    margin: 6mm 0;
+    height: 0.8mm;
+    width: 30mm;
+    background: var(--accent);
+}
+
+.cover .identity {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.4pt;
+}
+
+.cover .identity th,
+.cover .identity td {
+    text-align: left;
+    padding: 1.5mm 0;
+    border-bottom: 0.25mm solid var(--line-soft);
+    vertical-align: top;
+}
+
+.cover .identity th {
+    width: 42mm;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.cover .identity td {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+/* Daftar isi yang dibuat otomatis oleh build.mjs */
+.toc {
+    margin-top: 6mm;
+}
+
+.toc-title {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 1.6mm;
+    border-bottom: 0.25mm solid var(--line);
+}
+
+.toc ol {
+    list-style: none;
+    padding: 0;
+    margin-top: 2mm;
+}
+
+.toc li {
+    display: flex;
+    align-items: baseline;
+    gap: 2mm;
+    padding: 1.1mm 0;
+    border-bottom: 0.2mm dotted var(--line);
+    font-size: 8.8pt;
+}
+
+.toc .toc-no {
+    width: 7mm;
+    color: var(--accent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.toc .toc-label {
+    font-weight: 600;
+}
+
+.toc .toc-module {
+    color: var(--muted);
+    font-size: 8pt;
+}
+
+.toc .toc-dots {
+    flex: 1;
+    border-bottom: 0.2mm dotted var(--line);
+    transform: translateY(-1mm);
+}
+
+.toc .toc-page {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+/* Petunjuk yang hanya tampil di layar, tidak ikut tercetak. */
+.screen-only {
+    display: block;
+}
+
+.toolbar {
+    position: fixed;
+    right: 6mm;
+    bottom: 6mm;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+    padding: 2.5mm 3.5mm;
+    border-radius: 2mm;
+    background: rgba(16, 24, 40, 0.92);
+    color: #fff;
+    font-size: 8.4pt;
+    box-shadow: 0 1.5mm 5mm rgba(16, 24, 40, 0.3);
+}
+
+.toolbar-info {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.toolbar button {
+    font: inherit;
+    font-weight: 600;
+    padding: 1.4mm 3mm;
+    border: 0;
+    border-radius: 1.2mm;
+    background: #14b8a6;
+    color: #04211d;
+    cursor: pointer;
+}
+
+.toolbar button:hover {
+    background: #2dd4bf;
+}
+
+/* --------------------------------------------------------------------------
+   3. Aturan cetak
+   -------------------------------------------------------------------------- */
+
+@page {
+    size: A4;
+    margin: 20mm;
+}
+
+@media print {
+    html,
+    body {
+        background: #fff;
+    }
+
+    /* Margin diambil alih @page: tinggi lembar = 297mm - 2 x 20mm = 257mm,
+       sehingga area gambar menyusut otomatis bila teks bertambah. */
+    .page {
+        width: auto;
+        height: 257mm;
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        overflow: hidden;
+    }
+
+    .screen-only {
+        display: none !important;
+    }
+
+    /* Jangan memotong panel, gambar, atau baris di tengah halaman. */
+    .panel,
+    .shot,
+    .page-title,
+    .highlight,
+    .cover .identity,
+    .toc li {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    h2,
+    h3,
+    h4 {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    a {
+        color: inherit;
+        text-decoration: none;
+    }
+}
+
+/* Pratinjau sempit: jangan perkecil skala, cukup gulir horizontal. */
+@media screen and (max-width: 230mm) {
+    .page {
+        margin: 0 0 8mm;
+    }
+}
+
+</style>
+</head>
+<body>
+
+<div class="toolbar screen-only">
+    <span class="toolbar-info">15 halaman A4</span>
+    <button type="button" onclick="window.print()">Cetak / Simpan PDF</button>
+</div>
+
+<!--
+    pages/00-sampul.html — halaman sampul + daftar isi otomatis.
+    data-toc="false" agar sampul tidak muncul di daftar isi.
+-->
+<section class="page cover" data-title="Sampul" data-toc="false">
+
+    <div>
+        <p class="cover-kicker">Dokumentasi Presentasi Aplikasi</p>
+
+        <h1>Sistem Klasifikasi<br>Keberhasilan Pengobatan<br>Pasien MDR-TB</h1>
+
+        <div class="cover-rule"></div>
+
+        <p class="cover-sub">
+            Panduan halaman demi halaman untuk mempresentasikan aplikasi kepada dosen
+            pembimbing. Setiap halaman memuat satu tampilan antarmuka, penjelasan
+            fungsinya, serta poin-poin penting yang perlu dijelaskan saat presentasi.
+        </p>
+
+        <div class="toc">
+            <p class="toc-title">Daftar Isi</p>
+            <ol>
+        <li>
+            <span class="toc-no">02</span>
+            <span class="toc-label">Halaman Login</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Autentikasi</span>
+            <span class="toc-page">2</span>
+        </li>
+        <li>
+            <span class="toc-no">03</span>
+            <span class="toc-label">Halaman Dashboard</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Navigasi</span>
+            <span class="toc-page">3</span>
+        </li>
+        <li>
+            <span class="toc-no">04</span>
+            <span class="toc-label">Fitur Utama: Formulir Klasifikasi</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Klasifikasi</span>
+            <span class="toc-page">4</span>
+        </li>
+        <li>
+            <span class="toc-no">05</span>
+            <span class="toc-label">Hasil Klasifikasi</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Klasifikasi</span>
+            <span class="toc-page">5</span>
+        </li>
+        <li>
+            <span class="toc-no">06</span>
+            <span class="toc-label">Riwayat Klasifikasi</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Riwayat</span>
+            <span class="toc-page">6</span>
+        </li>
+        <li>
+            <span class="toc-no">07</span>
+            <span class="toc-label">Detail Riwayat Klasifikasi</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Riwayat</span>
+            <span class="toc-page">7</span>
+        </li>
+        <li>
+            <span class="toc-no">08</span>
+            <span class="toc-label">Evaluasi Model</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Evaluasi</span>
+            <span class="toc-page">8</span>
+        </li>
+        <li>
+            <span class="toc-no">09</span>
+            <span class="toc-label">Pengujian Efektivitas SMOTE</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Evaluasi</span>
+            <span class="toc-page">9</span>
+        </li>
+        <li>
+            <span class="toc-no">10</span>
+            <span class="toc-label">Skenario Pengujian</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Evaluasi</span>
+            <span class="toc-page">10</span>
+        </li>
+        <li>
+            <span class="toc-no">11</span>
+            <span class="toc-label">Data Rekam Medis</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Administrasi</span>
+            <span class="toc-page">11</span>
+        </li>
+        <li>
+            <span class="toc-no">12</span>
+            <span class="toc-label">Formulir Data Rekam Medis</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Administrasi</span>
+            <span class="toc-page">12</span>
+        </li>
+        <li>
+            <span class="toc-no">13</span>
+            <span class="toc-label">Pembersihan Data</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Administrasi</span>
+            <span class="toc-page">13</span>
+        </li>
+        <li>
+            <span class="toc-no">14</span>
+            <span class="toc-label">Manajemen Akun</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Administrasi</span>
+            <span class="toc-page">14</span>
+        </li>
+        <li>
+            <span class="toc-no">15</span>
+            <span class="toc-label">Profil Pengguna</span>
+            <span class="toc-dots"></span>
+            <span class="toc-module">Akun</span>
+            <span class="toc-page">15</span>
+        </li>
+    </ol>
+        </div>
+    </div>
+
+    <div>
+        <table class="identity">
+            <tr>
+                <th>Nama Mahasiswa</th>
+                <td>…………………………………………………</td>
+            </tr>
+            <tr>
+                <th>NIM</th>
+                <td>…………………………………………………</td>
+            </tr>
+            <tr>
+                <th>Program Studi</th>
+                <td>…………………………………………………</td>
+            </tr>
+            <tr>
+                <th>Dosen Pembimbing</th>
+                <td>…………………………………………………</td>
+            </tr>
+            <tr>
+                <th>Teknologi</th>
+                <td>Laravel 12 · Inertia.js · React · Flask · Random Forest</td>
+            </tr>
+            <tr>
+                <th>Tanggal</th>
+                <td>4 November 2026</td>
+            </tr>
+        </table>
+    </div>
+
+</section>
+
+
+<!-- ===== login ===== -->
+<section class="page"
+         data-title="Halaman Login"
+         data-module="Autentikasi"
+         data-shot="login">
+
+    <header class="page-head">
+        <span class="head-module">Modul Autentikasi</span>
+        <span class="head-no">Halaman 2 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Halaman Login</h2>
+        <p class="subtitle">Gerbang masuk sistem. Seluruh fitur hanya dapat diakses setelah pengguna terautentikasi, karena data yang diproses merupakan data rekam medis.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 16 / 9"><img src="assets/login.png" alt="Halaman Login"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 1</span>
+            <span>Antarmuka login: panel informasi sistem di kiri, formulir masuk dan kartu akun demo di kanan.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Memverifikasi identitas pengguna sebelum masuk ke sistem, lalu mengarahkan ke Dashboard sesuai peran akun: admin atau tenaga medis. Panel kiri menampilkan ringkasan sistem — 17 variabel klinis, teknik SMOTE, dan validasi 5-<em>fold</em>.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> login adalah lapisan pertama kendali akses sebelum data pasien dapat dibuka.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li><strong>Tidak ada pendaftaran mandiri.</strong> Akun hanya dibuat admin, sejalan dengan perlindungan data pribadi (UU No. 27 Tahun 2022).</li>
+                        <li>Kata sandi tidak pernah disimpan sebagai teks biasa; model <span class="path">User</span> melakukan <em>hashing</em> otomatis.</li>
+                        <li>Kotak <em>Akun Demo</em> hanya alat bantu demonstrasi dan wajib dihapus sebelum aplikasi dipakai di lingkungan nyata.</li>
+                        <li>Percobaan berulang dibatasi untuk mengurangi risiko tebak kata sandi.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 2 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== dashboard ===== -->
+<section class="page"
+         data-title="Halaman Dashboard"
+         data-module="Navigasi"
+         data-shot="dashboard">
+
+    <header class="page-head">
+        <span class="head-module">Modul Navigasi</span>
+        <span class="head-no">Halaman 3 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Halaman Dashboard</h2>
+        <p class="subtitle">Halaman pertama setelah login. Menampilkan sapaan, peran pengguna, dan kartu menu yang tersedia — daftar menu menyesuaikan hak akses.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 4 / 3"><img src="assets/dashboard.png" alt="Halaman Dashboard"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 2</span>
+            <span>Dashboard admin: tujuh kartu menu, badge peran, dan penjelasan singkat sistem di bagian bawah.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Pusat navigasi: pengguna melihat ringkasan sistem dan memilih fitur yang akan dijalankan. Tampilan berbeda antara admin dan tenaga medis karena daftar menu disaring berdasarkan peran.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> hak akses diterapkan dua kali — pada tampilan dan pada rute peladen.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li><strong>Dua lapis kendali akses:</strong> menu disembunyikan di tampilan, dan rute ditolak di peladen oleh <em>middleware</em> <span class="path">admin</span> dengan kode <span class="path">403</span>.</li>
+                        <li>Tenaga medis melihat 4 menu; admin melihat 7 menu.</li>
+                        <li>Setiap kartu menu memuat judul, keterangan singkat, dan tombol <em>Buka</em>.</li>
+                        <li>Menu dikelompokkan pada sidebar menjadi Utama, Evaluasi, dan Administrasi.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 3 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== klasifikasi ===== -->
+<section class="page"
+         data-title="Fitur Utama: Formulir Klasifikasi"
+         data-module="Klasifikasi"
+         data-shot="klasifikasi">
+
+    <header class="page-head">
+        <span class="head-module">Modul Klasifikasi</span>
+        <span class="head-no">Halaman 4 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Fitur Utama: Formulir Klasifikasi</h2>
+        <p class="subtitle">Inti sistem. Tenaga medis memasukkan data pasien dan tanggal awal pengobatan, sistem menghitung variabel turunan, lalu mengirim 17 variabel penelitian ke layanan <em>machine learning</em>.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 4 / 3"><img src="assets/klasifikasi.png" alt="Fitur Utama: Formulir Klasifikasi"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 3</span>
+            <span>Formulir terisi: kategori usia, durasi, dan status pengobatan tampil sebagai hasil hitung otomatis, bukan isian pengguna.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Mengumpulkan 17 variabel prediktor dari rekam medis pasien, ditambah tanggal awal pengobatan sebagai metadata, lalu mengirimkannya ke model Random Forest untuk memperoleh label <em>Berhasil</em> atau <em>Tidak Berhasil</em> beserta probabilitasnya.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> IMT, kategori usia, durasi, dan status pengobatan dihitung sistem agar data masukan konsisten; tanggal pengobatan tidak ikut dikirim ke model.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li><strong>Nama pasien tidak dikirim ke model</strong> — hanya penanda internal.</li>
+                        <li>Tanggal awal pengobatan <strong>wajib</strong> pada klasifikasi baru. Durasi dihitung sampai hari ini, lalu status ditentukan: kurang dari 6 bulan pengobatan baru, 6 bulan atau lebih pengobatan lama.</li>
+                        <li>Validasi kategori memakai aturan yang sama dengan data latih (<span class="path">TrainingData::aturanKategorik</span>), sehingga nilai selalu dikenali model.</li>
+                        <li>Hasil bukan keputusan akhir: keputusan klinis tetap pada tenaga medis.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 4 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== hasil ===== -->
+<section class="page"
+         data-title="Hasil Klasifikasi"
+         data-module="Klasifikasi"
+         data-shot="hasil">
+
+    <header class="page-head">
+        <span class="head-module">Modul Klasifikasi</span>
+        <span class="head-no">Halaman 5 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Hasil Klasifikasi</h2>
+        <p class="subtitle">Keluaran utama sistem. Setelah formulir dikirim, halaman ini menampilkan label prediksi, tingkat keyakinan, probabilitas tiap kelas, dan rekomendasi tindakan klinis yang bisa langsung dibaca tenaga medis.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 4 / 3"><img src="assets/hasil.png" alt="Hasil Klasifikasi"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 4</span>
+            <span>Hasil klasifikasi: label Tidak Berhasil dengan keyakinan 94,20%, probabilitas tiap kelas, dan rekomendasi tindakan berprioritas.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Menyajikan hasil klasifikasi secara utuh: label, tingkat keyakinan, probabilitas tiap kelas, rekomendasi tindakan berprioritas, data pasien lengkap dengan tanggal awal, durasi, dan status pengobatan, serta sepuluh variabel paling berpengaruh.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> model hanya memberi label dan probabilitas; sistem menambahkan penalaran tindakan agar pasien berisiko tidak lolos dari perhatian.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Contoh pada gambar: <strong>Tidak Berhasil 94,20%</strong> (probabilitas <em>Berhasil</em> 5,80%), risiko <strong>Tinggi</strong>, tujuh faktor risiko.</li>
+                        <li>Blok <strong>Informasi Pengobatan</strong> menampilkan tanggal awal, durasi, dan status sebagai potret saat klasifikasi — bukan variabel model.</li>
+                        <li><em>Feature importance</em> menjelaskan variabel paling berpengaruh pada model, bukan sebab pada satu pasien.</li>
+                        <li>Hasil adalah alat bantu; keputusan klinis akhir tetap pada tenaga medis.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 5 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== riwayat ===== -->
+<section class="page"
+         data-title="Riwayat Klasifikasi"
+         data-module="Riwayat"
+         data-shot="riwayat">
+
+    <header class="page-head">
+        <span class="head-module">Modul Riwayat</span>
+        <span class="head-no">Halaman 6 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Riwayat Klasifikasi</h2>
+        <p class="subtitle">Arsip seluruh klasifikasi yang pernah dijalankan. Admin melihat semua riwayat, sedangkan tenaga medis hanya melihat riwayat yang ia buat sendiri.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 16 / 10"><img src="assets/riwayat.png" alt="Riwayat Klasifikasi"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 5</span>
+            <span>Daftar riwayat: identitas pasien beserta durasi dan status pengobatan, hasil, keyakinan, penginput, waktu, dan aksi; filter hasil di kanan atas.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Menampilkan daftar hasil klasifikasi secara ringkas agar dapat ditelusuri kembali, dibandingkan, atau dibuka detailnya. Tabel memuat identitas pasien, durasi dan status pengobatan, label hasil, keyakinan, penginput, dan waktu.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> pembatasan akses riwayat diterapkan pada kueri basis data, sehingga tenaga medis tidak mungkin melihat data pasien milik pengguna lain.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Nama pasien bersifat opsional. Bila dikosongkan, tabel menampilkan <strong>slug</strong> seperti <span class="path">P-WsCsLG</span> sebagai penanda internal.</li>
+                        <li>Durasi dan status pengobatan berasal dari potret saat klasifikasi, sehingga riwayat lama tidak berubah ketika tanggal berjalan.</li>
+                        <li>Badge hasil membedakan warna: <em>Berhasil</em> netral, <em>Tidak Berhasil</em> merah, agar pasien berisiko mudah dikenali.</li>
+                        <li>Kolom <em>Diinput oleh</em> hanya muncul untuk admin, sesuai kebutuhan audit lintas pengguna.</li>
+                        <li>Penyaringan data dilakukan di peladen, bukan dengan menyembunyikan baris di tampilan.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 6 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== riwayat-detail ===== -->
+<section class="page"
+         data-title="Detail Riwayat Klasifikasi"
+         data-module="Riwayat"
+         data-shot="riwayat-detail">
+
+    <header class="page-head">
+        <span class="head-module">Modul Riwayat</span>
+        <span class="head-no">Halaman 7 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Detail Riwayat Klasifikasi</h2>
+        <p class="subtitle">Membuka satu catatan klasifikasi secara lengkap, termasuk data masukan yang tersimpan. Halaman ini juga menjadi tempat menghapus riwayat.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 4 / 3"><img src="assets/riwayat-detail.png" alt="Detail Riwayat Klasifikasi"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 6</span>
+            <span>Detail klasifikasi: waktu, model, penginput, kartu hasil, rekomendasi tindakan berprioritas, dan tombol hapus.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Menyajikan kembali satu hasil klasifikasi secara utuh: waktu, model, penginput, label dan probabilitas, rekomendasi klinis, seluruh nilai variabel yang dimasukkan, informasi pengobatan, dan variabel paling berpengaruh.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> data rekam medis dilindungi sampai tingkat baris — mengetahui ID catatan tidak cukup untuk membukanya.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Ada dua lapis pengamanan: <em>middleware</em> <span class="path">auth</span> untuk semua rute, dan pemeriksaan kepemilikan data di tingkat controller.</li>
+                        <li>Tanggal awal, durasi, dan status pengobatan dibaca dari <span class="path">patient_data</span>, bukan dihitung ulang, agar tetap sesuai kondisi saat klasifikasi.</li>
+                        <li>Penghapusan bersifat permanen, karena itu wajib melewati dialog konfirmasi.</li>
+                        <li>Rekomendasi disusun ulang dari data pasien saat halaman dibuka, sehingga tetap konsisten meski aturan diperbarui.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 7 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== evaluasi ===== -->
+<section class="page"
+         data-title="Evaluasi Model"
+         data-module="Evaluasi"
+         data-shot="evaluasi">
+
+    <header class="page-head">
+        <span class="head-module">Modul Evaluasi</span>
+        <span class="head-no">Halaman 8 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Evaluasi Model</h2>
+        <p class="subtitle">Bukti kuantitatif performa Random Forest pada data uji, sekaligus penjelasan mengapa <em>recall</em> dijadikan metrik utama penelitian.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 4 / 3"><img src="assets/evaluasi.png" alt="Evaluasi Model"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 7</span>
+            <span>Evaluasi model: metrik data uji, confusion matrix 2×2, distribusi kelas, penyeimbangan SMOTE, dan kualitas data.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Menampilkan hasil evaluasi model yang sedang digunakan: empat metrik utama, <em>confusion matrix</em>, distribusi kelas, pengaruh SMOTE, validasi silang lima lipatan, dan kontribusi setiap variabel.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> recall diberi label <em>fokus</em> karena biaya klinis terbesar bukan salah menandai pasien berhasil, melainkan melewatkan pasien yang berisiko gagal.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Kelas positif adalah <strong>Tidak Berhasil</strong>, sehingga <em>false negative</em> — pasien gagal yang diprediksi berhasil — adalah kesalahan yang paling dihindari.</li>
+                        <li>SMOTE hanya diterapkan pada data latih; data uji tetap memakai distribusi asli agar evaluasi tidak bias.</li>
+                        <li>Angka 100% pada data uji perlu dibaca hati-hati karena hanya 35 sampel; validasi silang memberi gambaran stabilitas yang lebih jujur.</li>
+                        <li>Kartu <em>Pembagian dan Kualitas Data</em> membandingkan distribusi basis data dengan data bersih yang dilaporkan layanan ML.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 8 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== smote ===== -->
+<section class="page"
+         data-title="Pengujian Efektivitas SMOTE"
+         data-module="Evaluasi"
+         data-shot="smote">
+
+    <header class="page-head">
+        <span class="head-module">Modul Evaluasi</span>
+        <span class="head-no">Halaman 9 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Pengujian Efektivitas SMOTE</h2>
+        <p class="subtitle">Membuktikan kontribusi SMOTE secara empiris: dua model dilatih pada data yang sama, satu tanpa SMOTE dan satu dengan SMOTE, lalu hasilnya dibandingkan.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 4 / 3"><img src="assets/smote.png" alt="Pengujian Efektivitas SMOTE"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 8</span>
+            <span>Pengujian SMOTE: kesimpulan otomatis, tabel perbandingan metrik data uji, dan tabel validasi silang lima lipatan.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Menjawab pertanyaan penelitian: apakah SMOTE benar-benar meningkatkan kemampuan model mendeteksi kelas minoritas? Selisih <em>recall</em> menjadi bukti utamanya.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> SMOTE terbukti meningkatkan recall pada data uji, tetapi efeknya pada dataset kecil tidak selalu seragam di semua metrik — karena itu kedua tabel ditampilkan.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Acuan kesimpulan adalah <strong>data uji</strong>, karena data ini belum pernah dilihat model saat pelatihan.</li>
+                        <li>Kenaikan recall 9,09 poin berarti satu pasien berisiko gagal berhasil diselamatkan dari ketidakterdeteksian.</li>
+                        <li>Hasil validasi silang justru sedikit menurun. Ini ditampilkan apa adanya agar penilaian tidak sepihak dan tetap jujur secara ilmiah.</li>
+                        <li>Kesimpulan pada kartu atas disusun otomatis dari selisih metrik, bukan ditulis manual.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 9 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== skenario ===== -->
+<section class="page"
+         data-title="Skenario Pengujian"
+         data-module="Evaluasi"
+         data-shot="skenario">
+
+    <header class="page-head">
+        <span class="head-module">Modul Evaluasi</span>
+        <span class="head-no">Halaman 10 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Skenario Pengujian</h2>
+        <p class="subtitle">Menguji kestabilan model terhadap dua hal: proporsi pembagian data dan jumlah pohon pada Random Forest. Tujuannya menemukan konfigurasi terbaik sekaligus menghindari <em>overfitting</em>.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 4 / 3"><img src="assets/skenario.png" alt="Skenario Pengujian"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 9</span>
+            <span>Skenario pengujian: kartu proporsi dan jumlah pohon terbaik, tabel variasi pembagian data, dan tabel variasi n_estimators.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Menyajikan hasil dua skenario pengujian beserta konfigurasi terbaiknya: proporsi pembagian data 80:20 dan jumlah pohon 100, masing-masing dipilih berdasarkan F1-score pada data uji.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> pemilihan hyperparameter dilakukan berdasarkan bukti pada data uji, bukan tebakan, dan selalu disertai pemeriksaan selisih latih–uji.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Konfigurasi terpilih: <strong>80:20</strong> dan <strong>100 pohon</strong>, keduanya dengan selisih F1 latih–uji 0,00%.</li>
+                        <li>Mayoritas konfigurasi memberi hasil hampir sama, yang menandakan model cukup stabil pada dataset ini.</li>
+                        <li>Menambah pohon di atas 100 tidak menaikkan F1, sehingga 100 dipilih agar model lebih ringan.</li>
+                        <li>Pengujian melatih ulang model berkali-kali dan memakan waktu, karena itu dibatasi untuk admin.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 10 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== data-rekam-medis ===== -->
+<section class="page"
+         data-title="Data Rekam Medis"
+         data-module="Administrasi"
+         data-shot="data-rekam-medis">
+
+    <header class="page-head">
+        <span class="head-module">Modul Administrasi</span>
+        <span class="head-no">Halaman 11 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Data Rekam Medis</h2>
+        <p class="subtitle">Pusat pengelolaan dataset penelitian. Admin dapat menambah, mengubah, dan menghapus baris data, memeriksa kualitas data, serta melatih ulang model.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 16 / 10"><img src="assets/data-rekam-medis.png" alt="Data Rekam Medis"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 10</span>
+            <span>Data rekam medis: statistik dataset 175 baris, rasio ketidakseimbangan 2,24:1, tabel data, dan tombol Latih Ulang Model.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Menampilkan seluruh data rekam medis yang dipakai sebagai data latih, lengkap dengan statistik kelas dan rasio ketidakseimbangan. Dari sini admin juga memicu pelatihan ulang model.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> model bukan berkas statis — ia mengikuti dataset. Perubahan data wajib diikuti pelatihan ulang agar evaluasi dan klasifikasi tetap selaras.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Rasio 2,24:1 menunjukkan kelas tidak seimbang, dan inilah alasan SMOTE digunakan.</li>
+                        <li>Setiap penambahan atau perubahan data mengubah model, sehingga <strong>latih ulang</strong> diperlukan agar hasil klasifikasi konsisten.</li>
+                        <li>IMT dan kategori usia tidak diisi manual; keduanya dihitung ulang saat data disimpan.</li>
+                        <li>Tanggal awal pengobatan bersifat opsional pada data lama, sehingga 175 baris tetap dapat disunting tanpa melengkapi tanggal yang tidak tercatat.</li>
+                        <li>Aksi per baris: lihat detail, ubah, dan hapus dengan konfirmasi.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 11 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== data-form ===== -->
+<section class="page"
+         data-title="Formulir Data Rekam Medis"
+         data-module="Administrasi"
+         data-shot="data-form">
+
+    <header class="page-head">
+        <span class="head-module">Modul Administrasi</span>
+        <span class="head-no">Halaman 12 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Formulir Data Rekam Medis</h2>
+        <p class="subtitle">Digunakan admin untuk menambah atau mengubah satu baris dataset penelitian. Lima belas variabel diisi, dua variabel dihitung sistem, dan satu label keberhasilan pengobatan ditetapkan.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 4 / 3"><img src="assets/data-form.png" alt="Formulir Data Rekam Medis"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 11</span>
+            <span>Formulir tambah data: kategori usia, IMT, durasi, dan status pengobatan tampil sebagai kotak hasil hitung otomatis.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Mengumpulkan data rekam medis baru secara terstruktur. Formulir dibagi empat kelompok agar pengisian mengikuti alur pemeriksaan: Data Demografis, Kondisi Fisik, Riwayat Kesehatan, dan Data Pengobatan.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> variabel turunan dihitung sistem agar tidak mungkin terjadi pencatatan yang bertentangan, misalnya usia 48 tahun tercatat sebagai usia produktif.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Hanya 15 isian aktif; kategori usia dan IMT tidak dapat dimanipulasi sehingga data selalu konsisten dengan definisi penelitian.</li>
+                        <li>Tanggal awal pengobatan <strong>opsional</strong> di sini agar data lama tetap dapat disunting; bila diisi, durasi dan status pengobatan langsung dihitung.</li>
+                        <li><em>Keterangan efek samping</em> berupa teks bebas dan tidak dipakai sebagai fitur model, hanya catatan klinis.</li>
+                        <li>Label <em>Keberhasilan Pengobatan</em> hanya ada di data latih; data harus lengkap agar tidak dikecualikan pada tahap pembersihan.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 12 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== pembersihan ===== -->
+<section class="page"
+         data-title="Pembersihan Data"
+         data-module="Administrasi"
+         data-shot="pembersihan">
+
+    <header class="page-head">
+        <span class="head-module">Modul Administrasi</span>
+        <span class="head-no">Halaman 13 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Pembersihan Data</h2>
+        <p class="subtitle">Menampilkan hasil pemeriksaan kualitas dataset sebelum dipakai melatih model: berapa baris dibuang karena nilai kosong dan berapa karena duplikat.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 16 / 10"><img src="assets/pembersihan.png" alt="Pembersihan Data"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 12</span>
+            <span>Pembersihan data: ringkasan 175 data awal dan 175 data bersih, tanpa nilai hilang maupun duplikat, serta daftar kolom wajib.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Menjadi bukti bahwa tahap <em>data cleaning</em> benar-benar dijalankan dan dapat diaudit. Halaman menampilkan ringkasan empat angka kunci serta rincian setiap baris yang dikecualikan.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> kualitas data diperiksa secara eksplisit dan dapat ditelusuri, bukan diasumsikan bersih.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Pada dataset penelitian: <strong>175 → 175</strong>, artinya 0 nilai hilang dan 0 duplikat, sehingga seluruh data layak dipakai.</li>
+                        <li>Halaman ini <em>tidak</em> menghapus data dari basis data; ia hanya menampilkan baris yang akan dikecualikan saat pelatihan.</li>
+                        <li>Daftar kolom wajib ditampilkan agar kriteria pemeriksaan transparan dan dapat diverifikasi dosen.</li>
+                        <li>Bila ada baris dibuang, tabel rincian mencantumkan alasan dan ID pembanding untuk duplikat.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 13 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== akun ===== -->
+<section class="page"
+         data-title="Manajemen Akun"
+         data-module="Administrasi"
+         data-shot="akun">
+
+    <header class="page-head">
+        <span class="head-module">Modul Administrasi</span>
+        <span class="head-no">Halaman 14 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Manajemen Akun</h2>
+        <p class="subtitle">Satu-satunya tempat pembuatan akun. Admin mengelola akun admin dan tenaga medis; tidak ada pendaftaran mandiri karena data yang diproses bersifat rahasia.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 16 / 10"><img src="assets/akun.png" alt="Manajemen Akun"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 13</span>
+            <span>Manajemen akun: statistik total akun, tabel nama–email–peran, dan aksi ubah atau hapus untuk setiap akun.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Mengatur siapa yang boleh masuk ke sistem dan dengan peran apa. Setiap akun memiliki satu peran yang menentukan menu dan rute yang dapat diakses.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> akun dibuat terpusat oleh admin, dan aturan pengaman mencegah sistem terkunci tanpa pengelola.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li><strong>Admin terakhir</strong> tidak dapat diturunkan perannya atau dihapus, agar sistem tidak kehilangan pengelola.</li>
+                        <li>Akun yang sedang digunakan tidak dapat menghapus dirinya sendiri.</li>
+                        <li>Contoh dataset awal: 2 akun — satu admin dan satu tenaga medis.</li>
+                        <li>Tidak ada registrasi publik, sejalan dengan perlindungan data pribadi (UU No. 27 Tahun 2022).</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 14 dari 15</span>
+    </footer>
+
+</section>
+
+<!-- ===== profil ===== -->
+<section class="page"
+         data-title="Profil Pengguna"
+         data-module="Akun"
+         data-shot="profil">
+
+    <header class="page-head">
+        <span class="head-module">Modul Akun</span>
+        <span class="head-no">Halaman 15 / 15</span>
+    </header>
+
+    <div class="page-title">
+        <h2>Profil Pengguna</h2>
+        <p class="subtitle">Setiap pengguna dapat memperbarui namanya, alamat email, dan kata sandinya sendiri tanpa perlu bantuan admin.</p>
+    </div>
+
+    <figure class="shot">
+        <div class="shot-frame" style="--shot-ratio: 16 / 10"><img src="assets/profil.png" alt="Profil Pengguna"></div>
+        <figcaption>
+            <span class="fig-no">Gambar 14</span>
+            <span>Profil: badge peran, formulir informasi akun, dan formulir ubah kata sandi dengan ketentuan minimal delapan karakter.</span>
+        </figcaption>
+    </figure>
+
+    <div class="panel">
+        <p class="panel-title">
+            Penjelasan Detail
+            <span class="panel-note">poin yang perlu dipahami sebelum menjelaskan</span>
+        </p>
+
+        <div class="explain">
+            <div class="col">
+                <div>
+                    <h4>Fungsi halaman</h4>
+                    <p>Memberi kendali terbatas kepada pengguna atas identitas akunnya sendiri. Halaman terdiri atas dua formulir terpisah: <em>Informasi Akun</em> dan <em>Ubah Kata Sandi</em>.</p>
+                </div>
+
+                <p class="highlight">
+                    <strong>Inti yang disampaikan:</strong> hak mengubah data dibatasi pada milik sendiri, sedangkan penetapan peran tetap berada di tangan admin.
+                </p>
+            </div>
+
+            <div class="col">
+                <div>
+                    <h4>Poin yang harus dijelaskan</h4>
+                    <ul>
+                        <li>Berbeda dari <em>Manajemen Akun</em>: di sini pengguna mengubah dirinya sendiri, bukan akun orang lain.</li>
+                        <li>Email harus tetap unik; sistem menolak email yang sudah dipakai akun lain.</li>
+                        <li>Peran tidak dapat diubah dari halaman ini — hanya admin yang berwenang menetapkan peran.</li>
+                        <li>Kata sandi lama wajib benar sebelum kata sandi baru disimpan, sebagai pengaman tambahan.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-foot">
+        <span>Sistem Klasifikasi Keberhasilan Pengobatan Pasien MDR-TB</span>
+        <span>Halaman 15 dari 15</span>
+    </footer>
+
+</section>
+
+<script>
+    // Tombol cetak memakai dialog cetak peramban: pilih "Save as PDF",
+    // ukuran A4, margin Default (margin diatur @page), aktifkan
+    // "Background graphics" agar warna panel ikut tercetak.
+</script>
+
+</body>
+</html>

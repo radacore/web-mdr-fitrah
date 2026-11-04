@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dokumentasi Presentasi Aplikasi</title>
+<!--
+    template.html — kerangka dokumen. Jangan menulis isi halaman di sini.
+
+    Token yang diganti oleh build.mjs:
+      - token gaya    : isi style.css (disisipkan agar hasil satu berkas portabel)
+      - token halaman : gabungan semua pages/*.html, urut nama berkas
+      - token total   : jumlah halaman
+      - token tanggal : tanggal build
+
+    Jangan menuliskan nama token secara literal di komentar, karena penggantian
+    dilakukan untuk seluruh isi berkas.
+
+    Token per halaman (nomor, total, daftar isi, gambar, caption) diisi di
+    dalam masing-masing berkas pages/*.html.
+-->
+<style>
+{{STYLE}}
+</style>
+</head>
+<body>
+
+<div class="toolbar screen-only">
+    <span class="toolbar-info">{{TOTAL_PAGES}} halaman A4</span>
+    <button type="button" onclick="window.print()">Cetak / Simpan PDF</button>
+</div>
+
+{{PAGES}}
+
+<script>
+    // Tombol cetak memakai dialog cetak peramban: pilih "Save as PDF",
+    // ukuran A4, margin Default (margin diatur @page), aktifkan
+    // "Background graphics" agar warna panel ikut tercetak.
+</script>
+
+</body>
+</html>

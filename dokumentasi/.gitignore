@@ -1,0 +1,4 @@
+node_modules/
+.DS_Store
+# Salinan dokumentasi versi lama, disimpan lokal sebagai pembanding.
+dokumentasi copy.pdf

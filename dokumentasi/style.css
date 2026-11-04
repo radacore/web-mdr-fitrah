@@ -1,0 +1,597 @@
+/* ==========================================================================
+   style.css — tata letak A4 untuk dokumen presentasi
+   Satu <section class="page"> = satu lembar A4.
+
+   Susunan satu halaman:
+     kepala (label modul + nomor)  →  judul fitur  →  area gambar
+     →  panel penjelasan (dua kolom)  →  kaki halaman
+
+   Dibagi tiga bagian:
+   1. Token & reset
+   2. Komponen halaman
+   3. Aturan cetak (@page, page-break)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Token & reset
+   -------------------------------------------------------------------------- */
+
+:root {
+    --ink: #101828;
+    --ink-soft: #344054;
+    --muted: #667085;
+    --line: #d0d5dd;
+    --line-soft: #eaecf0;
+    --tint: #f8fafc;
+    --accent: #0f766e;
+    --accent-soft: #ecfdf5;
+    --accent-line: #99f6e4;
+    --warn: #b54708;
+    --warn-soft: #fffaeb;
+    --warn-line: #fedf89;
+
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+        "Liberation Mono", monospace;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    background: #e6e8ec;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 8.7pt;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+figure,
+dl,
+dd {
+    margin: 0;
+}
+
+ul,
+ol {
+    padding-left: 4.2mm;
+}
+
+li + li {
+    margin-top: 1.1mm;
+}
+
+strong {
+    font-weight: 650;
+}
+
+code,
+.path {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    color: var(--ink);
+}
+
+/* --------------------------------------------------------------------------
+   2. Komponen halaman
+   -------------------------------------------------------------------------- */
+
+/* Lembar A4. Di layar ditampilkan seperti kertas; saat dicetak margin
+   diambil alih @page sehingga padding dinolkan. */
+.page {
+    position: relative;
+    width: 210mm;
+    height: 297mm;
+    padding: 20mm;
+    margin: 0 auto 8mm;
+    background: #fff;
+    box-shadow: 0 1mm 4mm rgba(16, 24, 40, 0.18);
+    display: flex;
+    flex-direction: column;
+    break-after: page;
+    page-break-after: always;
+}
+
+.page:last-of-type {
+    break-after: auto;
+    page-break-after: auto;
+}
+
+/* --- Kepala halaman: label modul + nomor halaman --- */
+
+.page-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6mm;
+    padding-bottom: 2mm;
+    border-bottom: 0.35mm solid var(--ink);
+    font-size: 7.6pt;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.page-head .head-module {
+    font-weight: 650;
+    color: var(--accent);
+}
+
+.page-head .head-no {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- Judul fitur --- */
+
+.page-title {
+    margin-top: 4mm;
+}
+
+.page-title h2 {
+    font-size: 18pt;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    font-weight: 700;
+}
+
+.page-title .subtitle {
+    margin-top: 1.5mm;
+    font-size: 9.4pt;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 160mm;
+}
+
+.page-title .meta {
+    margin-top: 2.5mm;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5mm 2mm;
+}
+
+.tag {
+    display: inline-block;
+    padding: 0.6mm 2mm;
+    border: 0.25mm solid var(--line);
+    border-radius: 999px;
+    background: var(--tint);
+    font-size: 7.4pt;
+    color: var(--ink-soft);
+}
+
+.tag--accent {
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+/* --- Area gambar / screenshot --- */
+
+.shot {
+    margin-top: 3.5mm;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.shot-frame {
+    position: relative;
+    width: 100%;
+    /* Rasio mengikuti tinggi tangkapan layar (lihat `rasio` di konten.mjs):
+       1440 x 810 = 16:9, 1440 x 900 = 16:10, 1440 x 1080 = 4:3. */
+    aspect-ratio: var(--shot-ratio, 16 / 9);
+    border: 0.3mm solid var(--line);
+    border-radius: 2mm;
+    background: var(--tint);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Gambar asli: pas di dalam bingkai tanpa terpotong dan tanpa distorsi. */
+.shot-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+}
+
+/* Ruang kosong sebelum screenshot ditempel. */
+.shot-placeholder {
+    padding: 8mm;
+    text-align: center;
+    color: var(--muted);
+}
+
+.shot-placeholder .ph-icon {
+    width: 11mm;
+    height: 11mm;
+    margin: 0 auto 2.5mm;
+    border: 0.4mm dashed var(--line);
+    border-radius: 2mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12pt;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.shot-placeholder .ph-title {
+    font-size: 9.4pt;
+    font-weight: 650;
+    color: var(--ink-soft);
+}
+
+.shot-placeholder .ph-hint {
+    margin-top: 1.5mm;
+    font-size: 8pt;
+    line-height: 1.45;
+}
+
+.shot-placeholder .ph-hint code {
+    background: #fff;
+    padding: 0.2mm 1mm;
+    border: 0.2mm solid var(--line);
+    border-radius: 0.8mm;
+}
+
+.shot figcaption {
+    margin-top: 1.8mm;
+    font-size: 8pt;
+    color: var(--muted);
+    display: flex;
+    gap: 2mm;
+    align-items: baseline;
+}
+
+.shot figcaption .fig-no {
+    font-weight: 650;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+
+/* --- Panel penjelasan (lebar penuh, isi dua kolom) --- */
+
+.panel {
+    margin-top: 3.5mm;
+    flex: 0 0 auto;
+    border: 0.25mm solid var(--line-soft);
+    border-radius: 1.6mm;
+    padding: 3.2mm 4mm 3.6mm;
+    background: #fff;
+    font-size: 8.2pt;
+    line-height: 1.42;
+}
+
+.panel-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2mm;
+    padding-bottom: 1.6mm;
+    margin-bottom: 2.6mm;
+    border-bottom: 0.25mm solid var(--line-soft);
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+
+.panel-title .panel-note {
+    font-size: 7.2pt;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--muted);
+}
+
+/* Dua kolom isi penjelasan. */
+.explain {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5mm;
+    align-items: start;
+}
+
+.explain .col {
+    display: flex;
+    flex-direction: column;
+    gap: 2.6mm;
+}
+
+.panel h4 {
+    margin-bottom: 1mm;
+    font-size: 8.6pt;
+    font-weight: 650;
+    color: var(--ink);
+}
+
+.panel p {
+    color: var(--ink-soft);
+}
+
+.panel p + p {
+    margin-top: 1.4mm;
+}
+
+.panel ul {
+    color: var(--ink-soft);
+    padding-left: 3.8mm;
+}
+
+.panel ul li::marker {
+    color: var(--accent);
+}
+
+/* Sorotan satu kalimat kunci di dalam panel. */
+.highlight {
+    margin-top: 0.6mm;
+    padding: 2mm 2.6mm;
+    border-left: 0.8mm solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 1.2mm 1.2mm 0;
+    font-size: 8.2pt;
+    color: var(--ink);
+}
+
+.highlight strong {
+    color: var(--accent);
+}
+
+/* --- Kaki halaman --- */
+
+.page-foot {
+    margin-top: auto;
+    padding-top: 2.5mm;
+    border-top: 0.25mm solid var(--line-soft);
+    display: flex;
+    justify-content: space-between;
+    gap: 6mm;
+    font-size: 7.2pt;
+    color: var(--muted);
+}
+
+/* --------------------------------------------------------------------------
+   Halaman sampul
+   -------------------------------------------------------------------------- */
+
+.cover {
+    justify-content: space-between;
+}
+
+.cover .cover-kicker {
+    font-size: 8pt;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.cover h1 {
+    margin-top: 4mm;
+    font-size: 27pt;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+}
+
+.cover .cover-sub {
+    margin-top: 4mm;
+    font-size: 11pt;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 140mm;
+}
+
+.cover .cover-rule {
+    margin: 6mm 0;
+    height: 0.8mm;
+    width: 30mm;
+    background: var(--accent);
+}
+
+.cover .identity {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.4pt;
+}
+
+.cover .identity th,
+.cover .identity td {
+    text-align: left;
+    padding: 1.5mm 0;
+    border-bottom: 0.25mm solid var(--line-soft);
+    vertical-align: top;
+}
+
+.cover .identity th {
+    width: 42mm;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.cover .identity td {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+/* Daftar isi yang dibuat otomatis oleh build.mjs */
+.toc {
+    margin-top: 6mm;
+}
+
+.toc-title {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 1.6mm;
+    border-bottom: 0.25mm solid var(--line);
+}
+
+.toc ol {
+    list-style: none;
+    padding: 0;
+    margin-top: 2mm;
+}
+
+.toc li {
+    display: flex;
+    align-items: baseline;
+    gap: 2mm;
+    padding: 1.1mm 0;
+    border-bottom: 0.2mm dotted var(--line);
+    font-size: 8.8pt;
+}
+
+.toc .toc-no {
+    width: 7mm;
+    color: var(--accent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.toc .toc-label {
+    font-weight: 600;
+}
+
+.toc .toc-module {
+    color: var(--muted);
+    font-size: 8pt;
+}
+
+.toc .toc-dots {
+    flex: 1;
+    border-bottom: 0.2mm dotted var(--line);
+    transform: translateY(-1mm);
+}
+
+.toc .toc-page {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+/* Petunjuk yang hanya tampil di layar, tidak ikut tercetak. */
+.screen-only {
+    display: block;
+}
+
+.toolbar {
+    position: fixed;
+    right: 6mm;
+    bottom: 6mm;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+    padding: 2.5mm 3.5mm;
+    border-radius: 2mm;
+    background: rgba(16, 24, 40, 0.92);
+    color: #fff;
+    font-size: 8.4pt;
+    box-shadow: 0 1.5mm 5mm rgba(16, 24, 40, 0.3);
+}
+
+.toolbar-info {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.toolbar button {
+    font: inherit;
+    font-weight: 600;
+    padding: 1.4mm 3mm;
+    border: 0;
+    border-radius: 1.2mm;
+    background: #14b8a6;
+    color: #04211d;
+    cursor: pointer;
+}
+
+.toolbar button:hover {
+    background: #2dd4bf;
+}
+
+/* --------------------------------------------------------------------------
+   3. Aturan cetak
+   -------------------------------------------------------------------------- */
+
+@page {
+    size: A4;
+    margin: 20mm;
+}
+
+@media print {
+    html,
+    body {
+        background: #fff;
+    }
+
+    /* Margin diambil alih @page: tinggi lembar = 297mm - 2 x 20mm = 257mm,
+       sehingga area gambar menyusut otomatis bila teks bertambah. */
+    .page {
+        width: auto;
+        height: 257mm;
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        overflow: hidden;
+    }
+
+    .screen-only {
+        display: none !important;
+    }
+
+    /* Jangan memotong panel, gambar, atau baris di tengah halaman. */
+    .panel,
+    .shot,
+    .page-title,
+    .highlight,
+    .cover .identity,
+    .toc li {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    h2,
+    h3,
+    h4 {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    a {
+        color: inherit;
+        text-decoration: none;
+    }
+}
+
+/* Pratinjau sempit: jangan perkecil skala, cukup gulir horizontal. */
+@media screen and (max-width: 230mm) {
+    .page {
+        margin: 0 0 8mm;
+    }
+}

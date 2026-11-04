@@ -1,0 +1,55 @@
+<!--
+    pages/00-sampul.html — halaman sampul + daftar isi otomatis.
+    data-toc="false" agar sampul tidak muncul di daftar isi.
+-->
+<section class="page cover" data-title="Sampul" data-toc="false">
+
+    <div>
+        <p class="cover-kicker">Dokumentasi Presentasi Aplikasi</p>
+
+        <h1>Sistem Klasifikasi<br>Keberhasilan Pengobatan<br>Pasien MDR-TB</h1>
+
+        <div class="cover-rule"></div>
+
+        <p class="cover-sub">
+            Panduan halaman demi halaman untuk mempresentasikan aplikasi kepada dosen
+            pembimbing. Setiap halaman memuat satu tampilan antarmuka, penjelasan
+            fungsinya, serta poin-poin penting yang perlu dijelaskan saat presentasi.
+        </p>
+
+        <div class="toc">
+            <p class="toc-title">Daftar Isi</p>
+            {{TOC}}
+        </div>
+    </div>
+
+    <div>
+        <table class="identity">
+            <tr>
+                <th>Nama Mahasiswa</th>
+                <td>…………………………………………………</td>
+            </tr>
+            <tr>
+                <th>NIM</th>
+                <td>…………………………………………………</td>
+            </tr>
+            <tr>
+                <th>Program Studi</th>
+                <td>…………………………………………………</td>
+            </tr>
+            <tr>
+                <th>Dosen Pembimbing</th>
+                <td>…………………………………………………</td>
+            </tr>
+            <tr>
+                <th>Teknologi</th>
+                <td>Laravel 12 · Inertia.js · React · Flask · Random Forest</td>
+            </tr>
+            <tr>
+                <th>Tanggal</th>
+                <td>{{BUILD_STAMP}}</td>
+            </tr>
+        </table>
+    </div>
+
+</section>
