@@ -43,6 +43,12 @@ if [ ! -x ./rebuild.sh ]; then
     exit 1
 fi
 
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$CURRENT_BRANCH" != "$BRANCH" ]; then
+    echo "!! Repo VPS berada di branch $CURRENT_BRANCH, bukan $BRANCH"
+    exit 1
+fi
+
 BEFORE="$(git rev-parse HEAD)"
 git fetch origin "$BRANCH"
 git pull --ff-only origin "$BRANCH"
