@@ -101,11 +101,11 @@ export const halaman = [
         shot: 'riwayat',
         rasio: '16 / 10',
         caption:
-            'Daftar riwayat: identitas pasien beserta durasi dan status pengobatan, hasil, keyakinan, penginput, waktu, dan aksi; filter hasil di kanan atas.',
+            'Daftar riwayat: identitas pasien beserta tanggal, durasi, dan status pengobatan, hasil, keyakinan, penginput, waktu, dan aksi; filter hasil di kanan atas.',
         subjudul:
             'Arsip seluruh klasifikasi yang pernah dijalankan. Admin melihat semua riwayat, sedangkan tenaga medis hanya melihat riwayat yang ia buat sendiri.',
         fungsi:
-            'Menampilkan daftar hasil klasifikasi secara ringkas agar dapat ditelusuri kembali, dibandingkan, atau dibuka detailnya. Tabel memuat identitas pasien, durasi dan status pengobatan, label hasil, keyakinan, penginput, dan waktu.',
+            'Menampilkan daftar hasil klasifikasi secara ringkas agar dapat ditelusuri kembali, dibandingkan, atau dibuka detailnya. Tabel memuat identitas pasien, tanggal awal, durasi dan status pengobatan, label hasil, keyakinan, penginput, dan waktu.',
         inti: 'pembatasan akses riwayat diterapkan pada kueri basis data, sehingga tenaga medis tidak mungkin melihat data pasien milik pengguna lain.',
         poin: [
             'Nama pasien bersifat opsional. Bila dikosongkan, tabel menampilkan **slug** seperti `P-WsCsLG` sebagai penanda internal.',

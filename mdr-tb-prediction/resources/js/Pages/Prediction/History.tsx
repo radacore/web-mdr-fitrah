@@ -23,6 +23,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/ShadcnComponents/ui/table';
+import { formatTanggal } from '@/lib/variabel';
 import { Paginated } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { Activity, Eye } from 'lucide-react';
@@ -149,6 +150,12 @@ export default function History({ predictions, filters, isAdmin }: Props) {
                                                 </span>
                                                 {item.patient_data?.status_pengobatan && (
                                                     <span className="block text-xs text-muted-foreground">
+                                                        {item.patient_data
+                                                            .tanggal_awal_pengobatan &&
+                                                            `${formatTanggal(
+                                                                item.patient_data
+                                                                    .tanggal_awal_pengobatan,
+                                                            )} · `}
                                                         {item.patient_data
                                                             .durasi_pengobatan ?? '-'}{' '}
                                                         ·{' '}
